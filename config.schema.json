@@ -1,0 +1,55 @@
+{
+	"pluginAlias": "ZencontrolTPI",
+	"pluginType": "platform",
+	"schema": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"title": "Name",
+				"required": true
+			},
+			"controllers": {
+				"type": "array",
+				"title": "Zencontrol Controllers",
+				"description": "The Zencontrol controllers on your local network that have a TPI license.",
+				"required": true,
+				"items": {
+					"type": "object",
+					"properties": {
+						"id": {
+							"type": "integer",
+							"title": "ID",
+							"required": true,
+							"description": "The ID of the controller. Use the same ID as in the cloud interface."
+						},
+						"address": {
+							"type": "string",
+							"title": "Address",
+							"required": true,
+							"description": "The IP address of the controller on your local network."
+						},
+						"port": {
+							"type": "integer",
+							"title": "Port",
+							"maximum": 65535,
+							"description": "The port number the controller listens on. Leave blank to use the default port."
+						},
+						"macAddress": {
+							"type": "string",
+							"title": "MAC Address",
+							"required": true,
+							"description": "The MAC address of the controller, e.g. FFFFFFFFFFFF or FF:FF:FF:FF:FF:FF",
+							"pattern": "^([A-Fa-f0-9]{2}:?){5}[A-Fa-f0-9]{2}$"
+						}
+					}
+				}
+			},
+			"debug": {
+				"type": "boolean",
+				"title": "Debug logging",
+				"required": false
+			}
+		}
+	}
+}
