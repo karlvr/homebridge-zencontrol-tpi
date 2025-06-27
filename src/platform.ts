@@ -268,10 +268,19 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		const lastSentDAPC = this.lastSentDAPC.get(daliId) || 0
 		if (instant && now - lastSentDAPC > 200) {
 			/* We only need to stop fading once every 250ms */
-			await this.zc.daliEnableDAPCSequence(address)
+			try {
+				await this.zc.daliEnableDAPCSequence(address)
+			} catch (error) {
+				this.log.warn(`Failed to enable DAPC sequence for ${address}:`, error)
+			}
 			this.lastSentDAPC.set(daliId, now)
 		}
-		await this.zc.daliArcLevel(address, arcLevel)
+
+		try {
+			await this.zc.daliArcLevel(address, arcLevel)
+		} catch (error) {
+			this.log.warn(`Failed to send arc level for ${address}:`, error)
+		}
 	}
 
 	private parseDaliId(daliId: string): ZenAddress {
