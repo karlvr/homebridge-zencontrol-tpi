@@ -17,7 +17,7 @@ export class ZencontrolTPIPlatformAccessory {
 	private knownOn = false
 
 	/**
-	 * The brightness of the group. Only updated by notification from the controller.
+	 * The brightness of the light. Only updated by notification from the controller.
 	 */
 	private knownBrightness = 0
 
@@ -28,8 +28,8 @@ export class ZencontrolTPIPlatformAccessory {
 		// set accessory information
 		this.accessory.getService(this.platform.Service.AccessoryInformation)!
 			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')
-			.setCharacteristic(this.platform.Characteristic.Model, 'Group')
-			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.groupId)
+			.setCharacteristic(this.platform.Characteristic.Model, accessory.context.model || 'Unknown')
+			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
 
 		// get the LightBulb service if it exists, otherwise create a new LightBulb service
 		// you can create multiple services for each accessory
@@ -106,7 +106,7 @@ export class ZencontrolTPIPlatformAccessory {
 			if (this.knownBrightness <= 0) {
 				await this.sendBrightnessCommand(100)
 			} else {
-				/* We resend the last known brightness in case the group has turned off since we last heard */
+				/* We resend the last known brightness in case the light has turned off since we last heard */
 				await this.sendBrightnessCommand(this.knownBrightness)
 			}
 		} else {
@@ -152,9 +152,9 @@ export class ZencontrolTPIPlatformAccessory {
 
 	async sendBrightnessCommand(brightness: number, instant = false) {
 		try {
-			this.platform.sendGroupArcLevel(this.accessory.context.groupId, Math.floor(brightness / 100 * 254), instant)
+			this.platform.sendArcLevel(this.accessory.context.id, Math.floor(brightness / 100 * 254), instant)
 		} catch (error) {
-			this.platform.log.warn(`Failed to set group arc level: ${error}`)
+			this.platform.log.warn(`Failed to set arc level: ${error}`)
 		}
 	}
 

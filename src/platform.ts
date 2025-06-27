@@ -3,7 +3,7 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 import { ZencontrolTPIPlatformAccessory } from './platformAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
 import { MyPluginConfig } from './types.js'
-import { ZenController, ZenConst, ZenProtocol, ZenAddress, ZenAddressType } from 'zencontrol-tpi-node'
+import { ZenController, ZenProtocol, ZenAddress, ZenAddressType } from 'zencontrol-tpi-node'
 
 /**
  * HomebridgePlatform
@@ -19,7 +19,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	public readonly discoveredCacheUUIDs: string[] = []
 
 	private zc: ZenProtocol
-	private groupAccessoryMap = new Map<string, ZencontrolTPIPlatformAccessory>()
+	private accessoryMap = new Map<string, ZencontrolTPIPlatformAccessory>()
+	private accessoryNeedsUpdate: PlatformAccessory[] = []
 	private lastSentDAPC = new Map<string, number>()
 
 	constructor(
@@ -88,71 +89,64 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	 */
 	async discoverDevices() {
 		this.log.info('Discovering groups')
-		this.groupAccessoryMap.clear()
+		this.accessoryMap.clear()
 
+		const promises: Promise<unknown>[] = []
 		for (const controller of this.zc.controllers) {
-			for (let group = 0; group < ZenConst.MAX_GROUP; group++) {
-				this.zc.queryGroupLabel(new ZenAddress(controller, ZenAddressType.GROUP, group)).then((label) => {
-					if (label === null) {
-						/* We treat these as not existing */
-						return
-					}
-					const groupId = groupIdToString(controller, group)
+			/* Discover groups */
+			promises.push(this.zc.queryGroupNumbers(controller).then((groups) => {
+				if (!groups) {
+					this.log.warn('Failed to discover groups')
+					return
+				}
 
-					// generate a unique id for the accessory this should be generated from
-					// something globally unique, but constant, for example, the device serial
-					// number or MAC address
-					const uuid = this.api.hap.uuid.generate(groupId)
-
-					// see if an accessory with the same uuid has already been registered and restored from
-					// the cached devices we stored in the `configureAccessory` method above
-					const existingAccessory = this.accessories.get(uuid)
-
-					if (existingAccessory) {
-						// the accessory already exists
-						this.log.info('Restoring existing group from cache:', existingAccessory.displayName)
-
-						if (existingAccessory.displayName !== label) {
-							this.log.info('Updating group name:', label)
-							existingAccessory.updateDisplayName(label)
+				const promises: Promise<unknown>[] = []
+				for (const group of groups) {
+					promises.push(this.zc.queryGroupLabel(group).then((label) => {
+						if (label === null) {
+							/* We treat these as not existing */
+							return
 						}
-				
-						// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-						// this.api.updatePlatformAccessories([existingAccessory])
+						const groupId = addressToString(group)
 
-						// create the accessory handler for the restored accessory
-						// this is imported from `platformAccessory.ts`
-						const acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory)
-						this.groupAccessoryMap.set(groupId, acc)
+						this.addAccessory(groupId, label, 'Group', `${group.controller.id}.${group.group()}`)
+					}))
+				}
 
-						// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-						// remove platform accessories when no longer present
-						// this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-						// this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-					} else {
-						// the accessory does not yet exist, so we need to create it
-						this.log.info('Adding new group:', label)
+				return Promise.all(promises)
+			}))
 
-						// create a new accessory
-						const accessory = new this.api.platformAccessory(label, uuid)
+			/* Discover ECGs that aren't in groups */
+			promises.push(this.zc.queryControlGearDaliAddresses(controller).then((ecgs) => {
+				if (!ecgs) {
+					this.log.warn('Failed to discover ECGs')
+					return
+				}
 
-						// store a copy of the device object in the `accessory.context`
-						// the `context` property can be used to store any data about the accessory you may need
-						accessory.context.groupId = groupId
+				const promises: Promise<unknown>[] = []
+				for (const ecg of ecgs) {
+					promises.push(this.zc.queryGroupMembershipByAddress(ecg).then(groups => {
+						if (groups && groups.length === 0) {
+							/* Found an ECG that's not part of a group */
+							return this.zc.queryDaliDeviceLabel(ecg).then(label => {
+								if (!label) {
+									return
+								}
 
-						// create the accessory handler for the newly create accessory
-						// this is imported from `platformAccessory.ts`
-						const acc = new ZencontrolTPIPlatformAccessory(this, accessory)
-						this.groupAccessoryMap.set(groupId, acc)
+								this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`)
+							})
+						}
+					}))
+				}
+				return Promise.all(promises)
+			}))
+		}
 
-						// link the accessory to your platform
-						this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-					}
+		await Promise.all(promises)
 
-					// push into discoveredCacheUUIDs
-					this.discoveredCacheUUIDs.push(uuid)
-				})
-			}
+		if (this.accessoryNeedsUpdate.length) {
+			this.api.updatePlatformAccessories(this.accessoryNeedsUpdate)
+			this.accessoryNeedsUpdate.splice(0, this.accessoryNeedsUpdate.length)
 		}
 
 		// you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
@@ -168,57 +162,155 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.activateLiveEvents()
 	}
 
+	private addAccessory(id: string, label: string, model: string, serial: string): void {
+		// generate a unique id for the accessory this should be generated from
+		// something globally unique, but constant, for example, the device serial
+		// number or MAC address
+		const uuid = this.api.hap.uuid.generate(id)
+
+		// see if an accessory with the same uuid has already been registered and restored from
+		// the cached devices we stored in the `configureAccessory` method above
+		const existingAccessory = this.accessories.get(uuid)
+
+		if (existingAccessory) {
+			// the accessory already exists
+			this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
+
+			if (existingAccessory.displayName !== label) {
+				this.log.info(`Updating existing ${model} accessory name:`, label)
+				existingAccessory.updateDisplayName(label)
+			}
+					
+			// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
+			// this.api.updatePlatformAccessories([existingAccessory])
+			let needsUpdate = false
+			if (existingAccessory.context.model !== model) {
+				existingAccessory.context.model = model
+				needsUpdate = true
+			}
+			if (existingAccessory.context.serial !== serial) {
+				existingAccessory.context.serial = serial
+				needsUpdate = true
+			}
+			if (existingAccessory.context.id !== id) {
+				existingAccessory.context.id = id
+				needsUpdate = true
+			}
+
+			if (needsUpdate) {
+				this.log.info(`Updating existing ${model} acccessory context: ${existingAccessory.displayName}`)
+				this.accessoryNeedsUpdate.push(existingAccessory)
+			}
+
+			// create the accessory handler for the restored accessory
+			// this is imported from `platformAccessory.ts`
+			const acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory)
+			this.accessoryMap.set(id, acc)
+
+			// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
+			// remove platform accessories when no longer present
+			// this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
+			// this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+		} else {
+			// the accessory does not yet exist, so we need to create it
+			this.log.info(`Adding new ${model} accessory:`, label)
+
+			// create a new accessory
+			const accessory = new this.api.platformAccessory(label, uuid)
+
+			// store a copy of the device object in the `accessory.context`
+			// the `context` property can be used to store any data about the accessory you may need
+			accessory.context.model = model
+			accessory.context.serial = serial
+			accessory.context.id = id
+
+			// create the accessory handler for the newly create accessory
+			// this is imported from `platformAccessory.ts`
+			const acc = new ZencontrolTPIPlatformAccessory(this, accessory)
+			this.accessoryMap.set(id, acc)
+
+			// link the accessory to your platform
+			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+		}
+
+		// push into discoveredCacheUUIDs
+		this.discoveredCacheUUIDs.push(uuid)
+	}
+
 	private async activateLiveEvents() {
 		this.zc.startEventMonitoring()
 
 		this.zc.groupLevelChangeCallback = (address, arcLevel) => {
-			const groupId = groupIdToString(address.controller, address.group())
-			const acc = this.groupAccessoryMap.get(groupId)
+			const idString = addressToString(address)
+			const acc = this.accessoryMap.get(idString)
 			if (acc) {
 				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
-					this.log.warn(`Failed to update group accessor brightness: ${reason}`)
+					this.log.warn(`Failed to update group accessory brightness: ${reason}`)
+				})
+			}
+		}
+		
+		this.zc.levelChangeCallback = (address, arcLevel) => {
+			const idString = addressToString(address)
+			const acc = this.accessoryMap.get(idString)
+			if (acc) {
+				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
+					this.log.warn(`Failed to update ECG accessory brightness: ${reason}`)
 				})
 			}
 		}
 	}
 
-	async sendGroupArcLevel(groupId: string, arcLevel: number, instant = true): Promise<void> {
-		const [controller, group] = this.parseGroupId(groupId)
+	async sendArcLevel(daliId: string, arcLevel: number, instant = true): Promise<void> {
+		const address = this.parseDaliId(daliId)
 
-		const address = new ZenAddress(controller, ZenAddressType.GROUP, group)
 		const now = Date.now()
-		const lastSentDAPC = this.lastSentDAPC.get(groupId) || 0
+		const lastSentDAPC = this.lastSentDAPC.get(daliId) || 0
 		if (instant && now - lastSentDAPC > 200) {
 			/* We only need to stop fading once every 250ms */
 			await this.zc.daliEnableDAPCSequence(address)
-			this.lastSentDAPC.set(groupId, now)
+			this.lastSentDAPC.set(daliId, now)
 		}
 		await this.zc.daliArcLevel(address, arcLevel)
 	}
 
-	private parseGroupId(groupId: string): [ZenController, number] {
-		const i = groupId.indexOf('-')
-		if (i === -1) {
-			throw new Error(`Invalid groupId: ${groupId}`)
+	private parseDaliId(daliId: string): ZenAddress {
+		const parts = daliId.split(' ')
+		if (parts.length < 2) {
+			throw new Error(`Unrecognised daliId: ${daliId}`)
 		}
-
-		const id = parseInt(groupId.substring(0, i))
-		const group = parseInt(groupId.substring(i + 1))
-		if (isNaN(id) || isNaN(group)) {
-			throw new Error(`Invalid groupId: ${groupId}`)
+		
+		const controllerId = parseInt(parts[1])
+		const controller = this.zc.controllers.find(c => c.id === controllerId)
+		if (!controller) {
+			throw new Error(`Unknown controller id: ${controllerId}`)
 		}
-
-		for (const controller of this.zc.controllers) {
-			if (controller.id === id) {
-				return [controller, group]
-			}
+			
+		if (parts[0] === 'BROADCAST') {
+			return new ZenAddress(controller, ZenAddressType.BROADCAST, 0)
+		} else if (parts[0] === 'GROUP') {
+			return new ZenAddress(controller, ZenAddressType.GROUP, parseInt(parts[2]))
+		} else if (parts[0] === 'ECG') {
+			return new ZenAddress(controller, ZenAddressType.ECG, parseInt(parts[2]))
+		} else if (parts[0] === 'ECD') {
+			return new ZenAddress(controller, ZenAddressType.ECD, parseInt(parts[2]))
+		} else {
+			throw new Error(`Unrecognised daliId: ${daliId}`)
 		}
-
-		throw new Error(`Unknown controller id in groupId: ${groupId}`)
 	}
 
 }
 
-function groupIdToString(controller: ZenController, group: number) {
-	return `${controller.id}-${group}`
+function addressToString(address: ZenAddress) {
+	switch (address.type) {
+	case ZenAddressType.BROADCAST:
+		return `BROADCAST ${address.controller.id}`		
+	case ZenAddressType.GROUP:
+		return `GROUP ${address.controller.id} ${address.group()}`
+	case ZenAddressType.ECG:
+		return `ECG ${address.controller.id} ${address.ecg()}`
+	case ZenAddressType.ECD:
+		return `ECD ${address.controller.id} ${address.ecd()}`
+	}
+	throw new Error(`Unsupported ZenAddressType: ${address.type}`)
 }
