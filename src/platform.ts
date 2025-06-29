@@ -3,7 +3,7 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 import { ZencontrolTPIPlatformAccessory } from './platformAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
 import { MyPluginConfig } from './types.js'
-import { ZenController, ZenProtocol, ZenAddress, ZenAddressType } from 'zencontrol-tpi-node'
+import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType } from 'zencontrol-tpi-node'
 
 /**
  * HomebridgePlatform
@@ -125,16 +125,22 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 				const promises: Promise<unknown>[] = []
 				for (const ecg of ecgs) {
-					promises.push(this.zc.queryGroupMembershipByAddress(ecg).then(groups => {
+					promises.push(this.zc.queryGroupMembershipByAddress(ecg).then(async groups => {
 						if (groups && groups.length === 0) {
 							/* Found an ECG that's not part of a group */
-							return this.zc.queryDaliDeviceLabel(ecg).then(label => {
+							const types = await this.zc.daliQueryCgType(ecg)
+							if (!types) {
+								return
+							}
+
+							if (types.find(typeIsLight)) {
+								const label = await this.zc.queryDaliDeviceLabel(ecg)
 								if (!label) {
 									return
 								}
 
 								this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`)
-							})
+							}
 						}
 					}))
 				}
@@ -322,4 +328,11 @@ function addressToString(address: ZenAddress) {
 		return `ECD ${address.controller.id} ${address.ecd()}`
 	}
 	throw new Error(`Unsupported ZenAddressType: ${address.type}`)
+}
+
+function typeIsLight(type: ZenControlGearType) {
+	return type === ZenControlGearType.DALI_HW_FLUORESCENT ||
+		type === ZenControlGearType.DALI_HW_HALOGEN ||
+		type === ZenControlGearType.DALI_HW_INCANDESCENT ||
+		type === ZenControlGearType.DALI_HW_LED
 }
