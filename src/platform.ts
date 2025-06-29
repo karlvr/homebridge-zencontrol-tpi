@@ -191,11 +191,16 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			// the accessory already exists
 			this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
 
-			if (existingAccessory.displayName !== label) {
-				this.log.info(`Updating existing ${model} accessory name:`, label)
+			const currentDisplayName = existingAccessory.displayName
+			if (currentDisplayName !== label) {
+				this.log.info(`Updating existing ${model} accessory display name:`, label, `(from ${currentDisplayName})`)
 				existingAccessory.updateDisplayName(label)
+
+				const nameCharacteristic = existingAccessory.getService(this.Service.AccessoryInformation)!
+					.getCharacteristic(this.Characteristic.Name)
+				nameCharacteristic.updateValue(label)
 			}
-					
+
 			// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
 			// this.api.updatePlatformAccessories([existingAccessory])
 			let needsUpdate = false
@@ -246,6 +251,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			// link the accessory to your platform
 			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+
+			const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
+				.getCharacteristic(this.Characteristic.Name)
+			nameCharacteristic.updateValue(label)
 		}
 
 		// push into discoveredCacheUUIDs
