@@ -102,14 +102,18 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 				const promises: Promise<unknown>[] = []
 				for (const group of groups) {
-					promises.push(this.zc.queryGroupLabel(group).then((label) => {
+					promises.push(this.zc.queryGroupLabel(group).then(async (label) => {
 						if (label === null) {
 							/* We treat these as not existing */
 							return
 						}
 						const groupId = addressToString(group)
 
-						this.addAccessory(groupId, label, 'Group', `${group.controller.id}.${group.group()}`)
+						const acc = this.addAccessory(groupId, label, 'Group', `${group.controller.id}.${group.group()}`)
+						const groupStatus = await this.zc.queryGroupByNumber(group)
+						if (groupStatus) {
+							acc.receiveDaliBrightness(groupStatus.level)
+						}
 					}))
 				}
 
@@ -139,7 +143,11 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									return
 								}
 
-								this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`)
+								const acc = this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`)
+								const level = await this.zc.daliQueryLevel(ecg)
+								if (level !== null) {
+									acc.receiveDaliBrightness(level)
+								}
 							}
 						}
 					}))
@@ -168,7 +176,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.activateLiveEvents()
 	}
 
-	private addAccessory(id: string, label: string, model: string, serial: string): void {
+	private addAccessory(id: string, label: string, model: string, serial: string): ZencontrolTPIPlatformAccessory {
 		// generate a unique id for the accessory this should be generated from
 		// something globally unique, but constant, for example, the device serial
 		// number or MAC address
@@ -178,6 +186,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		// the cached devices we stored in the `configureAccessory` method above
 		const existingAccessory = this.accessories.get(uuid)
 
+		let acc: ZencontrolTPIPlatformAccessory
 		if (existingAccessory) {
 			// the accessory already exists
 			this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
@@ -210,7 +219,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			// create the accessory handler for the restored accessory
 			// this is imported from `platformAccessory.ts`
-			const acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory)
+			acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory)
 			this.accessoryMap.set(id, acc)
 
 			// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
@@ -232,7 +241,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			// create the accessory handler for the newly create accessory
 			// this is imported from `platformAccessory.ts`
-			const acc = new ZencontrolTPIPlatformAccessory(this, accessory)
+			acc = new ZencontrolTPIPlatformAccessory(this, accessory)
 			this.accessoryMap.set(id, acc)
 
 			// link the accessory to your platform
@@ -241,6 +250,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		// push into discoveredCacheUUIDs
 		this.discoveredCacheUUIDs.push(uuid)
+		return acc
 	}
 
 	private async activateLiveEvents() {
