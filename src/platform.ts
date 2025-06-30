@@ -173,6 +173,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			}
 		}
 
+		this.log.info('Device discovery complete')
 		this.activateLiveEvents()
 	}
 
@@ -263,6 +264,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	}
 
 	private async activateLiveEvents() {
+		this.log.info('Starting live event monitoring')
 		this.zc.startEventMonitoring()
 
 		this.zc.groupLevelChangeCallback = (address, arcLevel) => {
