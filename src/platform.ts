@@ -1,9 +1,9 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge'
 
-import { ZencontrolTPIPlatformAccessory } from './platformAccessory.js'
+import { ZencontrolLightOptions, ZencontrolTPIPlatformAccessory } from './platformAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
 import { MyPluginConfig } from './types.js'
-import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType } from 'zencontrol-tpi-node'
+import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour } from 'zencontrol-tpi-node'
 
 /**
  * HomebridgePlatform
@@ -137,13 +137,14 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								return
 							}
 
-							if (types.find(typeIsLight)) {
+							if (types.find(isLightControlGear)) {
 								const label = await this.zc.queryDaliDeviceLabel(ecg)
 								if (!label) {
 									return
 								}
 
-								const acc = this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`)
+								const color = !!types.find(isColorControlGear)
+								const acc = this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`, { color: true })
 								const level = await this.zc.daliQueryLevel(ecg)
 								if (level !== null) {
 									acc.receiveDaliBrightness(level)
@@ -177,7 +178,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.activateLiveEvents()
 	}
 
-	private addAccessory(id: string, label: string, model: string, serial: string): ZencontrolTPIPlatformAccessory {
+	private addAccessory(id: string, label: string, model: string, serial: string, options: ZencontrolLightOptions = {}): ZencontrolTPIPlatformAccessory {
 		// generate a unique id for the accessory this should be generated from
 		// something globally unique, but constant, for example, the device serial
 		// number or MAC address
@@ -225,7 +226,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			// create the accessory handler for the restored accessory
 			// this is imported from `platformAccessory.ts`
-			acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory)
+			acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory, options)
 			this.accessoryMap.set(id, acc)
 
 			// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
@@ -247,7 +248,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			// create the accessory handler for the newly create accessory
 			// this is imported from `platformAccessory.ts`
-			acc = new ZencontrolTPIPlatformAccessory(this, accessory)
+			acc = new ZencontrolTPIPlatformAccessory(this, accessory, options)
 			this.accessoryMap.set(id, acc)
 
 			// link the accessory to your platform
@@ -286,14 +287,46 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				})
 			}
 		}
+
+		this.zc.colourChangeCallback = (address, color) => {
+			const idString = addressToString(address)
+			const acc = this.accessoryMap.get(idString)
+			if (acc) {
+				acc.receiveDaliColor(color).catch((reason) => {
+					this.log.warn(`Failed to update ECG accessory color: ${reason}`)
+				})
+			}
+		}
 	}
 
 	async sendArcLevel(daliId: string, arcLevel: number, instant = true): Promise<void> {
 		const address = this.parseDaliId(daliId)
 
+		if (instant) {
+			await this.applyInstant(daliId, address)
+		}
+
+		try {
+			await this.zc.daliArcLevel(address, arcLevel)
+		} catch (error) {
+			this.log.warn(`Failed to send arc level for ${address}:`, error)
+		}
+	}
+
+	async sendColor(daliId: string, color: ZenColour, arcLevel: number, instant = true): Promise<void> {
+		const address = this.parseDaliId(daliId)
+
+		try {
+			await this.zc.daliColour(address, color, arcLevel)
+		} catch (error) {
+			this.log.warn(`Failed to send color for ${address}:`, error)
+		}
+	}
+
+	private async applyInstant(daliId: string, address: ZenAddress) {
 		const now = Date.now()
 		const lastSentDAPC = this.lastSentDAPC.get(daliId) || 0
-		if (instant && now - lastSentDAPC > 200) {
+		if (now - lastSentDAPC > 200) {
 			/* We only need to stop fading once every 250ms */
 			try {
 				await this.zc.daliEnableDAPCSequence(address)
@@ -301,12 +334,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				this.log.warn(`Failed to enable DAPC sequence for ${address}:`, error)
 			}
 			this.lastSentDAPC.set(daliId, now)
-		}
-
-		try {
-			await this.zc.daliArcLevel(address, arcLevel)
-		} catch (error) {
-			this.log.warn(`Failed to send arc level for ${address}:`, error)
 		}
 	}
 
@@ -351,9 +378,13 @@ function addressToString(address: ZenAddress) {
 	throw new Error(`Unsupported ZenAddressType: ${address.type}`)
 }
 
-function typeIsLight(type: ZenControlGearType) {
+function isLightControlGear(type: ZenControlGearType) {
 	return type === ZenControlGearType.DALI_HW_FLUORESCENT ||
 		type === ZenControlGearType.DALI_HW_HALOGEN ||
 		type === ZenControlGearType.DALI_HW_INCANDESCENT ||
 		type === ZenControlGearType.DALI_HW_LED
+}
+
+function isColorControlGear(type: ZenControlGearType) {
+	return type === ZenControlGearType.DALI_HW_COLOUR_CONTROL
 }
