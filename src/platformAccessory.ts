@@ -1,7 +1,7 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZenColour, ZenColourType } from 'zencontrol-tpi-node'
+import { arcLevelToPercentage, percentageToArcLevel, ZenColour, ZenColourType } from 'zencontrol-tpi-node'
 
 export interface ZencontrolLightOptions {
 	color?: boolean
@@ -213,7 +213,7 @@ export class ZencontrolTPIPlatformAccessory {
 	private async updateBrightness() {
 		this.platform.log.info(`Updating brightness to ${this.requestBrightness} for ${this.accessory.displayName}`)
 		try {
-			await this.platform.sendArcLevel(this.accessory.context.id, Math.floor(this.requestBrightness! / 100 * 254))
+			await this.platform.sendArcLevel(this.accessory.context.id, percentageToArcLevel(this.requestBrightness!))
 		} catch (error) {
 			this.platform.log.warn(`Failed to update brightness for ${this.accessory.displayName}`, error)
 		}
@@ -225,7 +225,7 @@ export class ZencontrolTPIPlatformAccessory {
 		const color = this.daliColor()
 		this.platform.log.info(`Updating color to ${color} (hue ${this.requestHue ?? this.knownHue}, sat ${this.requestSaturation ?? this.knownSaturation}) and brightness to ${brightness} for ${this.accessory.displayName}`)
 		try {
-			await this.platform.sendColor(this.accessory.context.id, color, Math.floor(brightness / 100 * 254))
+			await this.platform.sendColor(this.accessory.context.id, color, percentageToArcLevel(brightness))
 		} catch (error) {
 			this.platform.log.warn(`Failed to update color for ${this.accessory.displayName}`, error)
 		}
@@ -324,7 +324,7 @@ export class ZencontrolTPIPlatformAccessory {
 	}
 
 	async receiveDaliBrightness(daliArcLevel: number) {
-		const brightness = Math.floor(daliArcLevel / 254 * 100)
+		const brightness = Math.round(arcLevelToPercentage(daliArcLevel))
 		const on = daliArcLevel > 0
 
 		if (brightness !== this.knownBrightness) {
