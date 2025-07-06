@@ -55,6 +55,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		const zc = new ZenProtocol({
 			controllers,
+			logger: this.log,
 		})
 		this.zc = zc
 
