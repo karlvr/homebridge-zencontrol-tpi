@@ -124,6 +124,10 @@ export class ZencontrolTPIPlatformAccessory {
 		// }, 10000)
 	}
 
+	get displayName() {
+		return this.accessory.displayName
+	}
+
 	/**
 	 * Handle "SET" requests from HomeKit
 	 * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.

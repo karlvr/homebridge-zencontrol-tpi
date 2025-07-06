@@ -274,7 +274,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			const acc = this.accessoryMap.get(idString)
 			if (acc) {
 				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
-					this.log.warn(`Failed to update group accessory brightness: ${reason}`)
+					this.log.warn(`Failed to update group accessory "${acc.displayName}" brightness: ${reason}`)
 				})
 			}
 		}
@@ -284,7 +284,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			const acc = this.accessoryMap.get(idString)
 			if (acc) {
 				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
-					this.log.warn(`Failed to update ECG accessory brightness: ${reason}`)
+					this.log.warn(`Failed to update ECG accessory "${acc.displayName}" brightness: ${reason}`)
 				})
 			}
 		}
@@ -294,7 +294,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			const acc = this.accessoryMap.get(idString)
 			if (acc) {
 				acc.receiveDaliColor(color).catch((reason) => {
-					this.log.warn(`Failed to update ECG accessory color: ${reason}`)
+					this.log.warn(`Failed to update ECG accessory "${acc.displayName}" color: ${reason}`)
 				})
 			}
 		}
