@@ -137,12 +137,8 @@ export class ZencontrolTPIPlatformAccessory {
 		this.platform.log.debug(`Set ${this.accessory.displayName} to ${on ? 'on' : 'off'}`)
 
 		if (on) {
-			if (this.knownBrightness <= 0) {
-				this.requestBrightness = 100
-			} else {
-				/* We resend the last known brightness in case the light has turned off since we last heard */
-				this.requestBrightness = this.knownBrightness
-			}
+			/* Brightness is always set at the same time, so we don't need to do anything for "on" requests */
+			return
 		} else {
 			this.requestBrightness = 0
 		}
@@ -181,7 +177,8 @@ export class ZencontrolTPIPlatformAccessory {
 		this.platform.log.debug(`Set ${this.accessory.displayName} brightness to ${brightness}`)
 
 		this.requestBrightness = brightness
-		this.requestBrightnessInstant = true
+		/* If the light was already on, then use instant fading - otherwise if we're turning it on or off use the default fade time */
+		this.requestBrightnessInstant = brightness > 0 && (this.requestBrightness ?? this.knownBrightness) > 0
 
 		this.updateState()
 	}
