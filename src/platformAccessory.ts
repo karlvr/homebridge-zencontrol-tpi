@@ -331,6 +331,11 @@ export class ZencontrolTPIPlatformAccessory {
 	}
 
 	async receiveDaliBrightness(daliArcLevel: number) {
+		if (daliArcLevel === 255) {
+			/* A stop fade; ignore */
+			return
+		}
+
 		const brightness = Math.round(arcLevelToPercentage(daliArcLevel))
 		const on = daliArcLevel > 0
 
