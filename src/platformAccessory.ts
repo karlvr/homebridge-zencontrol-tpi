@@ -25,6 +25,7 @@ export class ZencontrolTPIPlatformAccessory {
 	 */
 	private knownBrightness = 0
 	private requestBrightness?: number
+	private requestBrightnessInstant = true
 
 	/**
 	 * The hue of the light in range 0-359.
@@ -142,6 +143,7 @@ export class ZencontrolTPIPlatformAccessory {
 			this.requestBrightness = 0
 		}
 
+		this.requestBrightnessInstant = false
 		this.updateState()
 	}
 
@@ -175,6 +177,7 @@ export class ZencontrolTPIPlatformAccessory {
 		this.platform.log.debug(`Set ${this.accessory.displayName} brightness to ${brightness}`)
 
 		this.requestBrightness = brightness
+		this.requestBrightnessInstant = true
 
 		this.updateState()
 	}
@@ -213,7 +216,7 @@ export class ZencontrolTPIPlatformAccessory {
 	private async updateBrightness() {
 		this.platform.log.info(`Updating brightness to ${this.requestBrightness} for ${this.accessory.displayName}`)
 		try {
-			await this.platform.sendArcLevel(this.accessory.context.id, percentageToArcLevel(this.requestBrightness!))
+			await this.platform.sendArcLevel(this.accessory.context.id, percentageToArcLevel(this.requestBrightness!), this.requestBrightnessInstant)
 		} catch (error) {
 			this.platform.log.warn(`Failed to update brightness for ${this.accessory.displayName}`, error)
 		}
@@ -225,7 +228,7 @@ export class ZencontrolTPIPlatformAccessory {
 		const color = this.daliColor()
 		this.platform.log.info(`Updating color to ${color} (hue ${this.requestHue ?? this.knownHue}, sat ${this.requestSaturation ?? this.knownSaturation}) and brightness to ${brightness} for ${this.accessory.displayName}`)
 		try {
-			await this.platform.sendColor(this.accessory.context.id, color, percentageToArcLevel(brightness))
+			await this.platform.sendColor(this.accessory.context.id, color, percentageToArcLevel(brightness), this.requestBrightnessInstant)
 		} catch (error) {
 			this.platform.log.warn(`Failed to update color for ${this.accessory.displayName}`, error)
 		}
