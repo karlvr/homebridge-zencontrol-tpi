@@ -272,7 +272,7 @@ export class ZencontrolTPIPlatformAccessory {
 	async receiveDaliColor(color: ZenColour) {
 		const { h, s } = color.toHsv()
 		this.knownHue = h
-		this.knownSaturation = s
+		this.knownSaturation = Math.round(s * 100)
 
 		this.service.updateCharacteristic(this.platform.Characteristic.Hue, h)
 		this.service.updateCharacteristic(this.platform.Characteristic.Saturation, s)
