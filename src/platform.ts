@@ -145,7 +145,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								}
 
 								const color = !!types.find(isColorControlGear)
-								const acc = this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`, { color: true })
+								const acc = this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`, { color })
 								const level = await this.zc.daliQueryLevel(ecg)
 								if (level !== null) {
 									acc.receiveDaliBrightness(level)
