@@ -215,7 +215,7 @@ export class ZencontrolTPIPlatformAccessory {
 	}
 
 	private async updateBrightness() {
-		this.platform.log.info(`Updating brightness to ${this.requestBrightness} for ${this.accessory.displayName}`)
+		this.platform.log.info(`Updating ${this.displayName} brightness to ${this.requestBrightness}`)
 		try {
 			await this.platform.sendArcLevel(this.accessory.context.id, percentageToArcLevel(this.requestBrightness!), this.requestBrightnessInstant)
 		} catch (error) {
@@ -227,7 +227,7 @@ export class ZencontrolTPIPlatformAccessory {
 		const brightness = this.requestBrightness ?? this.knownBrightness
 
 		const color = this.daliColor()
-		this.platform.log.info(`Updating color to ${color} (hue ${this.requestHue ?? this.knownHue}, sat ${this.requestSaturation ?? this.knownSaturation}) and brightness to ${brightness} for ${this.accessory.displayName}`)
+		this.platform.log.info(`Updating ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`)
 		try {
 			await this.platform.sendColor(this.accessory.context.id, color, percentageToArcLevel(brightness), this.requestBrightnessInstant)
 		} catch (error) {
@@ -313,8 +313,6 @@ export class ZencontrolTPIPlatformAccessory {
 		w = Math.round(w)
 		a = Math.round(a)
 		f = Math.round(f)
-
-		this.platform.log.info(`Converted ${this.requestHue || this.knownHue}, ${this.requestSaturation ?? this.knownSaturation} to ${r}, ${g}, ${b}, ${w} (m=${m}, c=${c}, x=${x})`)
 
 		return new ZenColour({
 			r,
