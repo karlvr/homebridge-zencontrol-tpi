@@ -1,9 +1,18 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge'
 
-import { ZencontrolLightOptions, ZencontrolTPIPlatformAccessory } from './platformAccessory.js'
+import { ZencontrolLightOptions, ZencontrolLightPlatformAccessory } from './lightAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
-import { MyPluginConfig } from './types.js'
-import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour } from 'zencontrol-tpi-node'
+import { MyPluginConfig, ZencontrolTPIPlatformAccessory } from './types.js'
+import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
+import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
+import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
+
+interface ZencontrolTPIPlatformAccessoryOptions {
+	id: string
+	label: string
+	model: string
+	serial: string
+}
 
 /**
  * HomebridgePlatform
@@ -108,9 +117,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							/* We treat these as not existing */
 							return
 						}
-						const groupId = addressToString(group)
+						const groupId = addressToAccessoryId(group)
 
-						const acc = this.addAccessory(groupId, label, 'Group', `${group.controller.id}.${group.group()}`)
+						const acc = this.addLightAccessory({ id: groupId, label, model: 'Group', serial: `${group.controller.id}.${group.group()}` })
 						const groupStatus = await this.zc.queryGroupByNumber(group)
 						if (groupStatus) {
 							acc.receiveDaliBrightness(groupStatus.level)
@@ -145,7 +154,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								}
 
 								const color = !!types.find(isColorControlGear)
-								const acc = this.addAccessory(addressToString(ecg), label, 'ECG', `${controller.id}.${ecg.ecg()}`, { color })
+								const acc = this.addLightAccessory({ id: addressToAccessoryId(ecg), label, model: 'ECG', serial: `${controller.id}.${ecg.ecg()}`, color })
 								const level = await this.zc.daliQueryLevel(ecg)
 								if (level !== null) {
 									acc.receiveDaliBrightness(level)
@@ -156,6 +165,29 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				}
 				return Promise.all(promises)
 			}))
+
+			for (let variable = 0; variable < ZenConst.MAX_SYSVAR; variable++) {
+				promises.push(this.zc.querySystemVariableName(controller, variable).then(async label => {
+					if (label && label.toLocaleLowerCase().indexOf('temperature') !== -1) {
+						let value = await this.zc.querySystemVariable(controller, variable)
+
+						/* This API doesn't respect magnitude so we have to guess */
+						if (value !== null) {
+							while (value > 100) {
+								value /= 10
+							}
+						}
+
+						const acc = this.addTemperatureAccessory({ id: systemVariableToAccessoryId(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						acc.receiveTemperature(value)
+					} else if (label && label.toLocaleLowerCase().indexOf('humidity') !== -1) {
+						const value = await this.zc.querySystemVariable(controller, variable)
+
+						const acc = this.addHumidityAccessory({ id: systemVariableToAccessoryId(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						acc.receiveHumidity(value)
+					}
+				}))
+			}
 		}
 
 		await Promise.all(promises)
@@ -179,7 +211,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.activateLiveEvents()
 	}
 
-	private addAccessory(id: string, label: string, model: string, serial: string, options: ZencontrolLightOptions = {}): ZencontrolTPIPlatformAccessory {
+	private addLightAccessory({ id, label, model, serial, ...options }: ZencontrolTPIPlatformAccessoryOptions & ZencontrolLightOptions): ZencontrolLightPlatformAccessory {
 		// generate a unique id for the accessory this should be generated from
 		// something globally unique, but constant, for example, the device serial
 		// number or MAC address
@@ -189,45 +221,16 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		// the cached devices we stored in the `configureAccessory` method above
 		const existingAccessory = this.accessories.get(uuid)
 
-		let acc: ZencontrolTPIPlatformAccessory
+		let acc: ZencontrolLightPlatformAccessory
 		if (existingAccessory) {
 			// the accessory already exists
-			this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
+			this.log.info('Restoring existing light accessory from cache:', existingAccessory.displayName)
 
-			const currentDisplayName = existingAccessory.displayName
-			if (currentDisplayName !== label) {
-				this.log.info(`Updating existing ${model} accessory display name:`, label, `(from ${currentDisplayName})`)
-				existingAccessory.updateDisplayName(label)
-
-				const nameCharacteristic = existingAccessory.getService(this.Service.AccessoryInformation)!
-					.getCharacteristic(this.Characteristic.Name)
-				nameCharacteristic.updateValue(label)
-			}
-
-			// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-			// this.api.updatePlatformAccessories([existingAccessory])
-			let needsUpdate = false
-			if (existingAccessory.context.model !== model) {
-				existingAccessory.context.model = model
-				needsUpdate = true
-			}
-			if (existingAccessory.context.serial !== serial) {
-				existingAccessory.context.serial = serial
-				needsUpdate = true
-			}
-			if (existingAccessory.context.id !== id) {
-				existingAccessory.context.id = id
-				needsUpdate = true
-			}
-
-			if (needsUpdate) {
-				this.log.info(`Updating existing ${model} acccessory context: ${existingAccessory.displayName}`)
-				this.accessoryNeedsUpdate.push(existingAccessory)
-			}
+			this.updateAccessory(existingAccessory, { id, label, model, serial })
 
 			// create the accessory handler for the restored accessory
 			// this is imported from `platformAccessory.ts`
-			acc = new ZencontrolTPIPlatformAccessory(this, existingAccessory, options)
+			acc = new ZencontrolLightPlatformAccessory(this, existingAccessory, options)
 			this.accessoryMap.set(id, acc)
 
 			// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
@@ -236,7 +239,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			// this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
 		} else {
 			// the accessory does not yet exist, so we need to create it
-			this.log.info(`Adding new ${model} accessory:`, label)
+			this.log.info(`Adding new ${model} light accessory:`, label)
 
 			// create a new accessory
 			const accessory = new this.api.platformAccessory(label, uuid)
@@ -249,7 +252,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			// create the accessory handler for the newly create accessory
 			// this is imported from `platformAccessory.ts`
-			acc = new ZencontrolTPIPlatformAccessory(this, accessory, options)
+			acc = new ZencontrolLightPlatformAccessory(this, accessory, options)
 			this.accessoryMap.set(id, acc)
 
 			// link the accessory to your platform
@@ -265,14 +268,118 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		return acc
 	}
 
+	private addTemperatureAccessory({ id, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolTemperaturePlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(id)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolTemperaturePlatformAccessory
+		if (existingAccessory) {
+			this.log.info('Restoring existing temperature accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { id, label, model, serial })
+
+			acc = new ZencontrolTemperaturePlatformAccessory(this, existingAccessory)
+			this.accessoryMap.set(id, acc)
+		} else {
+			this.log.info(`Adding new ${model} temperature accessory:`, label)
+
+			const accessory = new this.api.platformAccessory(label, uuid)
+
+			accessory.context.model = model
+			accessory.context.serial = serial
+			accessory.context.id = id
+
+			acc = new ZencontrolTemperaturePlatformAccessory(this, accessory)
+			this.accessoryMap.set(id, acc)
+
+			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+
+			const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
+				.getCharacteristic(this.Characteristic.Name)
+			nameCharacteristic.updateValue(label)
+		}
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
+	
+	private addHumidityAccessory({ id, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolHumidityPlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(id)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolHumidityPlatformAccessory
+		if (existingAccessory) {
+			this.log.info('Restoring existing humidity accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { id, label, model, serial })
+
+			acc = new ZencontrolHumidityPlatformAccessory(this, existingAccessory)
+			this.accessoryMap.set(id, acc)
+		} else {
+			this.log.info(`Adding new ${model} humidity accessory:`, label)
+
+			const accessory = new this.api.platformAccessory(label, uuid)
+
+			accessory.context.model = model
+			accessory.context.serial = serial
+			accessory.context.id = id
+
+			acc = new ZencontrolHumidityPlatformAccessory(this, accessory)
+			this.accessoryMap.set(id, acc)
+
+			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+
+			const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
+				.getCharacteristic(this.Characteristic.Name)
+			nameCharacteristic.updateValue(label)
+		}
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
+
+	private updateAccessory(existingAccessory: PlatformAccessory, { id, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): boolean {
+		const currentDisplayName = existingAccessory.displayName
+		if (currentDisplayName !== label) {
+			this.log.info(`Updating existing ${model} accessory display name:`, label, `(from ${currentDisplayName})`)
+			existingAccessory.updateDisplayName(label)
+
+			const nameCharacteristic = existingAccessory.getService(this.Service.AccessoryInformation)!
+				.getCharacteristic(this.Characteristic.Name)
+			nameCharacteristic.updateValue(label)
+		}
+
+		// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
+		// this.api.updatePlatformAccessories([existingAccessory])
+		let needsUpdate = false
+		if (existingAccessory.context.model !== model) {
+			existingAccessory.context.model = model
+			needsUpdate = true
+		}
+		if (existingAccessory.context.serial !== serial) {
+			existingAccessory.context.serial = serial
+			needsUpdate = true
+		}
+		if (existingAccessory.context.id !== id) {
+			existingAccessory.context.id = id
+			needsUpdate = true
+		}
+
+		if (needsUpdate) {
+			this.log.info(`Updating existing ${model} acccessory context: ${existingAccessory.displayName}`)
+			this.accessoryNeedsUpdate.push(existingAccessory)
+		}
+		return needsUpdate
+	}
+
 	private async activateLiveEvents() {
 		this.log.info('Starting live event monitoring')
 		this.zc.startEventMonitoring()
 
 		this.zc.groupLevelChangeCallback = (address, arcLevel) => {
-			const idString = addressToString(address)
-			const acc = this.accessoryMap.get(idString)
-			if (acc) {
+			const accessoryId = addressToAccessoryId(address)
+			const acc = this.accessoryMap.get(accessoryId)
+			if (acc instanceof ZencontrolLightPlatformAccessory) {
 				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
 					this.log.warn(`Failed to update group accessory "${acc.displayName}" brightness: ${reason}`)
 				})
@@ -280,9 +387,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 		
 		this.zc.levelChangeCallback = (address, arcLevel) => {
-			const idString = addressToString(address)
-			const acc = this.accessoryMap.get(idString)
-			if (acc) {
+			const accessoryId = addressToAccessoryId(address)
+			const acc = this.accessoryMap.get(accessoryId)
+			if (acc instanceof ZencontrolLightPlatformAccessory) {
 				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
 					this.log.warn(`Failed to update ECG accessory "${acc.displayName}" brightness: ${reason}`)
 				})
@@ -290,21 +397,31 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 
 		this.zc.colourChangeCallback = (address, color) => {
-			const idString = addressToString(address)
-			const acc = this.accessoryMap.get(idString)
-			if (acc) {
+			const accessoryId = addressToAccessoryId(address)
+			const acc = this.accessoryMap.get(accessoryId)
+			if (acc instanceof ZencontrolLightPlatformAccessory) {
 				acc.receiveDaliColor(color).catch((reason) => {
 					this.log.warn(`Failed to update ECG accessory "${acc.displayName}" color: ${reason}`)
 				})
 			}
 		}
+
+		this.zc.systemVariableChangeCallback = (controller, variable, value) => {
+			const accessoryId = systemVariableToAccessoryId(controller, variable)
+			const acc = this.accessoryMap.get(accessoryId)
+			if (acc instanceof ZencontrolTemperaturePlatformAccessory) {
+				acc.receiveTemperature(value).catch((reason) => {
+					this.log.warn(`Failed to update temperature accessory "${acc.displayName}" color: ${reason}`)
+				})
+			}
+		}
 	}
 
-	async sendArcLevel(daliId: string, arcLevel: number, instant = true): Promise<void> {
-		const address = this.parseDaliId(daliId)
+	async sendArcLevel(accessoryId: string, arcLevel: number, instant = true): Promise<void> {
+		const address = this.parseAccessoryId(accessoryId)
 
 		if (instant) {
-			await this.applyInstant(daliId, address)
+			await this.applyInstant(accessoryId, address)
 		}
 
 		try {
@@ -314,8 +431,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 	}
 
-	async sendColor(daliId: string, color: ZenColour, arcLevel: number, instant = true): Promise<void> {
-		const address = this.parseDaliId(daliId)
+	async sendColor(accessoryId: string, color: ZenColour, arcLevel: number, instant = true): Promise<void> {
+		const address = this.parseAccessoryId(accessoryId)
 
 		try {
 			await this.zc.daliColour(address, color, arcLevel)
@@ -324,9 +441,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 	}
 
-	private async applyInstant(daliId: string, address: ZenAddress) {
+	private async applyInstant(accessoryId: string, address: ZenAddress) {
 		const now = Date.now()
-		const lastSentDAPC = this.lastSentDAPC.get(daliId) || 0
+		const lastSentDAPC = this.lastSentDAPC.get(accessoryId) || 0
 		if (now - lastSentDAPC > 200) {
 			/* We only need to stop fading once every 250ms */
 			try {
@@ -334,14 +451,14 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			} catch (error) {
 				this.log.warn(`Failed to enable DAPC sequence for ${address}:`, error)
 			}
-			this.lastSentDAPC.set(daliId, now)
+			this.lastSentDAPC.set(accessoryId, now)
 		}
 	}
 
-	private parseDaliId(daliId: string): ZenAddress {
-		const parts = daliId.split(' ')
+	private parseAccessoryId(accessoryId: string): ZenAddress {
+		const parts = accessoryId.split(' ')
 		if (parts.length < 2) {
-			throw new Error(`Unrecognised daliId: ${daliId}`)
+			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
 		}
 		
 		const controllerId = parseInt(parts[1])
@@ -359,13 +476,13 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		} else if (parts[0] === 'ECD') {
 			return new ZenAddress(controller, ZenAddressType.ECD, parseInt(parts[2]))
 		} else {
-			throw new Error(`Unrecognised daliId: ${daliId}`)
+			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
 		}
 	}
 
 }
 
-function addressToString(address: ZenAddress) {
+function addressToAccessoryId(address: ZenAddress) {
 	switch (address.type) {
 	case ZenAddressType.BROADCAST:
 		return `BROADCAST ${address.controller.id}`		
@@ -377,6 +494,10 @@ function addressToString(address: ZenAddress) {
 		return `ECD ${address.controller.id} ${address.ecd()}`
 	}
 	throw new Error(`Unsupported ZenAddressType: ${address.type}`)
+}
+
+function systemVariableToAccessoryId(controller: ZenController, variable: number) {
+	return `SYSVAR ${controller.id}.${variable}`
 }
 
 function isLightControlGear(type: ZenControlGearType) {

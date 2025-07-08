@@ -9,3 +9,7 @@ export interface MyPluginConfig extends PlatformConfig {
 	}[]
 	debug?: boolean
 }
+
+export interface ZencontrolTPIPlatformAccessory {
+	get displayName(): string
+}

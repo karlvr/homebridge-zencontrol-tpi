@@ -1,7 +1,8 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { arcLevelToPercentage, percentageToArcLevel, ZenColour, ZenColourType } from 'zencontrol-tpi-node'
+import { arcLevelToPercentage, percentageToArcLevel, ZenColour } from 'zencontrol-tpi-node'
+import { ZencontrolTPIPlatformAccessory } from './types.js'
 
 export interface ZencontrolLightOptions {
 	color?: boolean
@@ -12,7 +13,7 @@ export interface ZencontrolLightOptions {
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export class ZencontrolTPIPlatformAccessory {
+export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAccessory {
 	private service: Service
 
 	/**
