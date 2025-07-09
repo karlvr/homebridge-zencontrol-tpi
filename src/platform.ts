@@ -181,7 +181,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 
 		try {
-		await Promise.all(promises)
+			await Promise.all(promises)
 		} catch (error) {
 			this.log.error('Failed to discover devices', error)
 
@@ -370,9 +370,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	}
 
 	private async activateLiveEvents() {
-		this.log.info('Starting live event monitoring')
-		this.zc.startEventMonitoring()
-
 		this.zc.groupLevelChangeCallback = (address, arcLevel) => {
 			const accessoryId = addressToAccessoryId(address)
 			const acc = this.accessoryMap.get(accessoryId)
@@ -412,6 +409,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				})
 			}
 		}
+
+		this.log.info('Starting live event monitoring')
+		await this.zc.startEventMonitoring()
 	}
 
 	async sendArcLevel(accessoryId: string, arcLevel: number, instant = true): Promise<void> {
