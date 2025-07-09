@@ -105,11 +105,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		for (const controller of this.zc.controllers) {
 			/* Discover groups */
 			promises.push(this.zc.queryGroupNumbers(controller).then((groups) => {
-				if (!groups) {
-					this.log.warn('Failed to discover groups')
-					return
-				}
-
 				const promises: Promise<unknown>[] = []
 				for (const group of groups) {
 					promises.push(this.zc.queryGroupLabel(group).then(async (label) => {
@@ -132,15 +127,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			/* Discover ECGs that aren't in groups */
 			promises.push(this.zc.queryControlGearDaliAddresses(controller).then((ecgs) => {
-				if (!ecgs) {
-					this.log.warn('Failed to discover ECGs')
-					return
-				}
-
 				const promises: Promise<unknown>[] = []
 				for (const ecg of ecgs) {
 					promises.push(this.zc.queryGroupMembershipByAddress(ecg).then(async groups => {
-						if (groups && groups.length === 0) {
+						if (groups.length === 0) {
 							/* Found an ECG that's not part of a group */
 							const types = await this.zc.daliQueryCgType(ecg)
 							if (!types) {
@@ -190,7 +180,14 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			}
 		}
 
+		try {
 		await Promise.all(promises)
+		} catch (error) {
+			this.log.error('Failed to discover devices', error)
+
+			/* Return so we don't remove accessories, as then the user will have to set them all up again! Adding them to rooms etc */
+			return
+		}
 
 		if (this.accessoryNeedsUpdate.length) {
 			this.api.updatePlatformAccessories(this.accessoryNeedsUpdate)
