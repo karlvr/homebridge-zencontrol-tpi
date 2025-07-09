@@ -272,11 +272,15 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	}
 
 	async receiveDaliColor(color: ZenColour) {
-		const { h, s } = color.toHsv()
-		this.knownHue = h
-		this.knownSaturation = Math.round(s * 100)
+		if (color.supportsToHsv()) {
+			const { h, s } = color.toHsv()
+			this.knownHue = h
+			this.knownSaturation = Math.round(s * 100)
 
-		this.service.updateCharacteristic(this.platform.Characteristic.Hue, h)
-		this.service.updateCharacteristic(this.platform.Characteristic.Saturation, s)
+			this.service.updateCharacteristic(this.platform.Characteristic.Hue, h)
+			this.service.updateCharacteristic(this.platform.Characteristic.Saturation, s)
+		} else {
+			/* TODO handle colour temperature */
+		}
 	}
 }
