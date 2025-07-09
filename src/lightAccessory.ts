@@ -255,7 +255,8 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 			return
 		}
 
-		const brightness = Math.round(arcLevelToPercentage(daliArcLevel))
+		/* Note that a DALI arc level of 1 is 0.1%, which rounds to 0, which we don't want */
+		const brightness = daliArcLevel > 0 ? Math.max(1, Math.round(arcLevelToPercentage(daliArcLevel))) : 0
 		const on = daliArcLevel > 0
 
 		if (brightness !== this.knownBrightness) {
