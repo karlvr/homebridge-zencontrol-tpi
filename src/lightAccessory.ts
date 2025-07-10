@@ -20,6 +20,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	 * Whether the light is on/off. Only updated by notification from the controller.
 	 */
 	private knownOn = false
+	private requestOn?: boolean
 
 	/**
 	 * The brightness of the light in range 0-100. Only updated by notification from the controller.
@@ -138,14 +139,16 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		this.platform.log.debug(`Set ${this.accessory.displayName} to ${on ? 'on' : 'off'}`)
 
 		if (on) {
-			if (this.knownBrightness <= 0) {
+			/* Using the Home app requests in setting the brightness and then setting on, but using voice commands
+			   just results in setting on.
+			 */
+			this.requestOn = true
+			if ((this.requestBrightness ?? 0) === 0) {
+				/* We haven't requested a brightness to come on at, so set the brightness to 100% */
 				this.requestBrightness = 100
-			} else {
-				/* We resend the last known brightness in case the light has turned off since we last heard */
-				this.requestBrightness = this.knownBrightness
 			}
 		} else {
-			this.requestBrightness = 0
+			this.requestOn = false
 		}
 
 		this.requestBrightnessInstant = false
@@ -211,10 +214,14 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 
 	private updateState() {
 		clearTimeout(this.updateDebounceTimeout)
-		if (!this.options.color) {
-			this.updateDebounceTimeout = setTimeout(this.updateBrightness.bind(this), 200)
+		if (this.requestOn ?? this.knownOn) {
+			if (!this.options.color) {
+				this.updateDebounceTimeout = setTimeout(this.updateBrightness.bind(this), 200)
+			} else {
+				this.updateDebounceTimeout = setTimeout(this.updateColor.bind(this), 200)
+			}
 		} else {
-			this.updateDebounceTimeout = setTimeout(this.updateColor.bind(this), 200)
+			this.updateDebounceTimeout = setTimeout(this.updateOff.bind(this), 200)
 		}
 	}
 
@@ -234,6 +241,15 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		this.platform.log.info(`Updating ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`)
 		try {
 			await this.platform.sendColor(this.accessory.context.address, color, percentageToArcLevel(brightness), this.requestBrightnessInstant)
+		} catch (error) {
+			this.platform.log.warn(`Failed to update color for ${this.accessory.displayName}`, error)
+		}
+	}
+
+	private async updateOff() {
+		this.platform.log.info(`Updating ${this.displayName} to off`)
+		try {
+			await this.platform.sendArcLevel(this.accessory.context.address, 0, false)
 		} catch (error) {
 			this.platform.log.warn(`Failed to update color for ${this.accessory.displayName}`, error)
 		}
