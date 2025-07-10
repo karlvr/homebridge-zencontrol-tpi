@@ -6,6 +6,8 @@ import { MyPluginConfig, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAc
 import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
+import { ZencontrolRelayPlatformAccessory } from './relayAccessory.js'
+import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
 
 interface ZencontrolTPIPlatformAccessoryOptions {
 	address: string
@@ -149,6 +151,17 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								if (level !== null) {
 									acc.receiveArcLevel(level)
 								}
+							} else if (types.find(isRelayControlGear)) {
+								const label = await this.zc.queryDaliDeviceLabel(ecg)
+								if (!label) {
+									return
+								}
+
+								const acc = this.addRelayAccessory({ address: addressToString(ecg), label, model: 'Relay', serial: `${controller.id}.${ecg.ecg()}` })
+								const level = await this.zc.daliQueryLevel(ecg)
+								if (level !== null) {
+									acc.receiveArcLevel(level)
+								}
 							}
 						}
 					}))
@@ -175,6 +188,11 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 						const acc = this.addHumidityAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
 						acc.receiveHumidity(value)
+					} else if (label && label.toLocaleLowerCase().indexOf('lux') !== -1) {
+						const value = await this.zc.querySystemVariable(controller, variable)
+
+						const acc = this.addLuxAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						acc.receiveLux(value)
 					}
 				}))
 			}
@@ -260,6 +278,32 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		return acc
 	}
 
+	private addRelayAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolRelayPlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`relay @ ${address}`)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolRelayPlatformAccessory
+		if (existingAccessory) {
+			this.log.info('Restoring existing relay accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
+
+			acc = new ZencontrolRelayPlatformAccessory(this, existingAccessory)
+		} else {
+			this.log.info('Adding new relay accessory:', label)
+
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
+
+			acc = new ZencontrolRelayPlatformAccessory(this, accessory)
+		}
+
+		this.accessoriesByAddress.set(address, acc)
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
+
 	private addTemperatureAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolTemperaturePlatformAccessory {
 		const uuid = this.api.hap.uuid.generate(`temperature @ ${address}`)
 		const existingAccessory = this.accessories.get(uuid)
@@ -304,6 +348,32 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			this.setupAccessory(accessory, { address, label, model, serial })
 
 			acc = new ZencontrolHumidityPlatformAccessory(this, accessory)
+		}
+
+		this.accessoriesByAddress.set(address, acc)
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
+	
+	private addLuxAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolLuxPlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`lux @ ${address}`)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolLuxPlatformAccessory
+		if (existingAccessory) {
+			this.log.info('Restoring existing lux accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
+
+			acc = new ZencontrolLuxPlatformAccessory(this, existingAccessory)
+		} else {
+			this.log.info('Adding new lux accessory:', label)
+
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
+
+			acc = new ZencontrolLuxPlatformAccessory(this, accessory)
 		}
 
 		this.accessoriesByAddress.set(address, acc)
@@ -372,7 +442,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.zc.levelChangeCallback = (address, arcLevel) => {
 			const accessoryId = addressToString(address)
 			const acc = this.accessoriesByAddress.get(accessoryId)
-			if (acc instanceof ZencontrolLightPlatformAccessory) {
+			if (acc instanceof ZencontrolLightPlatformAccessory || acc instanceof ZencontrolRelayPlatformAccessory) {
 				acc.receiveArcLevel(arcLevel).catch((reason) => {
 					this.log.warn(`Failed to update accessory "${acc.displayName}" brightness: ${reason}`)
 				})
@@ -395,6 +465,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			if (acc instanceof ZencontrolTemperaturePlatformAccessory) {
 				acc.receiveTemperature(value).catch((reason) => {
 					this.log.warn(`Failed to update temperature accessory "${acc.displayName}" color: ${reason}`)
+				})
+			} else if (acc instanceof ZencontrolLuxPlatformAccessory) {
+				acc.receiveLux(value).catch((reason) => {
+					this.log.warn(`Failed to update lux accessory "${acc.displayName}" color: ${reason}`)
 				})
 			}
 		}
@@ -495,4 +569,8 @@ function isLightControlGear(type: ZenControlGearType) {
 
 function isColorControlGear(type: ZenControlGearType) {
 	return type === ZenControlGearType.DALI_HW_COLOUR_CONTROL
+}
+
+function isRelayControlGear(type: ZenControlGearType) {
+	return type === ZenControlGearType.DALI_HW_RELAY
 }
