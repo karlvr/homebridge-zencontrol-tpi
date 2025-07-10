@@ -13,3 +13,9 @@ export interface MyPluginConfig extends PlatformConfig {
 export interface ZencontrolTPIPlatformAccessory {
 	get displayName(): string
 }
+
+export interface ZencontrolTPIPlatformAccessoryContext {
+	address: string
+	model: string
+	serial: string
+}

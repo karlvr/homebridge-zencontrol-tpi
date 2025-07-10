@@ -1,7 +1,7 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolTPIPlatformAccessory } from './types.js'
+import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
 export class ZencontrolHumidityPlatformAccessory implements ZencontrolTPIPlatformAccessory {
 	private service: Service
@@ -10,7 +10,7 @@ export class ZencontrolHumidityPlatformAccessory implements ZencontrolTPIPlatfor
 
 	constructor(
 		private readonly platform: ZencontrolTPIPlatform,
-		private readonly accessory: PlatformAccessory,
+		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 	) {
 		this.accessory.getService(this.platform.Service.AccessoryInformation)!
 			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')

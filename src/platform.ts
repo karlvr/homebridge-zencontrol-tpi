@@ -2,13 +2,13 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 
 import { ZencontrolLightOptions, ZencontrolLightPlatformAccessory } from './lightAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
-import { MyPluginConfig, ZencontrolTPIPlatformAccessory } from './types.js'
+import { MyPluginConfig, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
 
 interface ZencontrolTPIPlatformAccessoryOptions {
-	id: string
+	address: string
 	label: string
 	model: string
 	serial: string
@@ -24,11 +24,12 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	public readonly Characteristic: typeof Characteristic
 
 	// this is used to track restored cached accessories
-	public readonly accessories: Map<string, PlatformAccessory> = new Map()
+	public readonly accessories: Map<string, PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>> = new Map()
 	public readonly discoveredCacheUUIDs: string[] = []
 
 	private zc: ZenProtocol
-	private accessoryMap = new Map<string, ZencontrolTPIPlatformAccessory>()
+	private accessoriesByAddress = new Map<string, ZencontrolTPIPlatformAccessory>()
+	private accessoryNeedsRegister: PlatformAccessory[] = []
 	private accessoryNeedsUpdate: PlatformAccessory[] = []
 	private lastSentDAPC = new Map<string, number>()
 
@@ -85,7 +86,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	 * This function is invoked when homebridge restores cached accessories from disk at startup.
 	 * It should be used to set up event handlers for characteristics and update respective values.
 	 */
-	configureAccessory(accessory: PlatformAccessory) {
+	configureAccessory(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>) {
 		this.log.info('Loading accessory from cache:', accessory.displayName)
 
 		// add the restored accessory to the accessories cache, so we can track if it has already been registered
@@ -98,8 +99,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	 * must not be registered again to prevent "duplicate UUID" errors.
 	 */
 	async discoverDevices() {
-		this.log.info('Discovering groups')
-		this.accessoryMap.clear()
+		this.log.info('Discovering groups and devices')
+		this.accessoriesByAddress.clear()
 
 		const promises: Promise<unknown>[] = []
 		for (const controller of this.zc.controllers) {
@@ -112,12 +113,11 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							/* We treat these as not existing */
 							return
 						}
-						const groupId = addressToAccessoryId(group)
 
-						const acc = this.addLightAccessory({ id: groupId, label, model: 'Group', serial: `${group.controller.id}.${group.group()}` })
+						const acc = this.addLightAccessory({ address: addressToString(group), label, model: 'DALI Group', serial: `${controller.id}.${group.group()}` })
 						const groupStatus = await this.zc.queryGroupByNumber(group)
 						if (groupStatus) {
-							acc.receiveDaliBrightness(groupStatus.level)
+							acc.receiveArcLevel(groupStatus.level)
 						}
 					}))
 				}
@@ -144,10 +144,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								}
 
 								const color = !!types.find(isColorControlGear)
-								const acc = this.addLightAccessory({ id: addressToAccessoryId(ecg), label, model: 'ECG', serial: `${controller.id}.${ecg.ecg()}`, color })
+								const acc = this.addLightAccessory({ address: addressToString(ecg), label, model: 'ECG', serial: `${controller.id}.${ecg.ecg()}`, color })
 								const level = await this.zc.daliQueryLevel(ecg)
 								if (level !== null) {
-									acc.receiveDaliBrightness(level)
+									acc.receiveArcLevel(level)
 								}
 							}
 						}
@@ -168,12 +168,12 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							}
 						}
 
-						const acc = this.addTemperatureAccessory({ id: systemVariableToAccessoryId(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						const acc = this.addTemperatureAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
 						acc.receiveTemperature(value)
 					} else if (label && label.toLocaleLowerCase().indexOf('humidity') !== -1) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addHumidityAccessory({ id: systemVariableToAccessoryId(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						const acc = this.addHumidityAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
 						acc.receiveHumidity(value)
 					}
 				}))
@@ -189,11 +189,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			return
 		}
 
-		if (this.accessoryNeedsUpdate.length) {
-			this.api.updatePlatformAccessories(this.accessoryNeedsUpdate)
-			this.accessoryNeedsUpdate.splice(0, this.accessoryNeedsUpdate.length)
-		}
-
 		// you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
 		// for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
 		// from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
@@ -204,15 +199,27 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			}
 		}
 
+		if (this.accessoryNeedsRegister.length) {
+			this.log.info(`Registering ${this.accessoryNeedsRegister.length} accessories`)
+			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryNeedsRegister)
+			this.accessoryNeedsRegister.splice(0, this.accessoryNeedsRegister.length)
+		}
+
+		if (this.accessoryNeedsUpdate.length) {
+			this.log.info(`Updating ${this.accessoryNeedsUpdate.length} accessories`)
+			this.api.updatePlatformAccessories(this.accessoryNeedsUpdate)
+			this.accessoryNeedsUpdate.splice(0, this.accessoryNeedsUpdate.length)
+		}
+
 		this.log.info('Device discovery complete')
 		this.activateLiveEvents()
 	}
 
-	private addLightAccessory({ id, label, model, serial, ...options }: ZencontrolTPIPlatformAccessoryOptions & ZencontrolLightOptions): ZencontrolLightPlatformAccessory {
+	private addLightAccessory({ address, label, model, serial, ...options }: ZencontrolTPIPlatformAccessoryOptions & ZencontrolLightOptions): ZencontrolLightPlatformAccessory {
 		// generate a unique id for the accessory this should be generated from
 		// something globally unique, but constant, for example, the device serial
 		// number or MAC address
-		const uuid = this.api.hap.uuid.generate(id)
+		const uuid = this.api.hap.uuid.generate(`light @ ${address}`)
 
 		// see if an accessory with the same uuid has already been registered and restored from
 		// the cached devices we stored in the `configureAccessory` method above
@@ -223,12 +230,11 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			// the accessory already exists
 			this.log.info('Restoring existing light accessory from cache:', existingAccessory.displayName)
 
-			this.updateAccessory(existingAccessory, { id, label, model, serial })
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
 			// create the accessory handler for the restored accessory
 			// this is imported from `platformAccessory.ts`
 			acc = new ZencontrolLightPlatformAccessory(this, existingAccessory, options)
-			this.accessoryMap.set(id, acc)
 
 			// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
 			// remove platform accessories when no longer present
@@ -239,103 +245,86 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			this.log.info(`Adding new ${model} light accessory:`, label)
 
 			// create a new accessory
-			const accessory = new this.api.platformAccessory(label, uuid)
-
-			// store a copy of the device object in the `accessory.context`
-			// the `context` property can be used to store any data about the accessory you may need
-			accessory.context.model = model
-			accessory.context.serial = serial
-			accessory.context.id = id
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
 
 			// create the accessory handler for the newly create accessory
 			// this is imported from `platformAccessory.ts`
 			acc = new ZencontrolLightPlatformAccessory(this, accessory, options)
-			this.accessoryMap.set(id, acc)
-
-			// link the accessory to your platform
-			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-
-			const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
-				.getCharacteristic(this.Characteristic.Name)
-			nameCharacteristic.updateValue(label)
 		}
+
+		this.accessoriesByAddress.set(address, acc)
 
 		// push into discoveredCacheUUIDs
 		this.discoveredCacheUUIDs.push(uuid)
 		return acc
 	}
 
-	private addTemperatureAccessory({ id, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolTemperaturePlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(id)
+	private addTemperatureAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolTemperaturePlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`temperature @ ${address}`)
 		const existingAccessory = this.accessories.get(uuid)
 
 		let acc: ZencontrolTemperaturePlatformAccessory
 		if (existingAccessory) {
 			this.log.info('Restoring existing temperature accessory from cache:', existingAccessory.displayName)
 
-			this.updateAccessory(existingAccessory, { id, label, model, serial })
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
 			acc = new ZencontrolTemperaturePlatformAccessory(this, existingAccessory)
-			this.accessoryMap.set(id, acc)
 		} else {
-			this.log.info(`Adding new ${model} temperature accessory:`, label)
+			this.log.info('Adding new temperature accessory:', label)
 
-			const accessory = new this.api.platformAccessory(label, uuid)
-
-			accessory.context.model = model
-			accessory.context.serial = serial
-			accessory.context.id = id
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
 
 			acc = new ZencontrolTemperaturePlatformAccessory(this, accessory)
-			this.accessoryMap.set(id, acc)
-
-			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-
-			const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
-				.getCharacteristic(this.Characteristic.Name)
-			nameCharacteristic.updateValue(label)
 		}
+
+		this.accessoriesByAddress.set(address, acc)
 
 		this.discoveredCacheUUIDs.push(uuid)
 		return acc
 	}
 	
-	private addHumidityAccessory({ id, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolHumidityPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(id)
+	private addHumidityAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolHumidityPlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`humidity @ ${address}`)
 		const existingAccessory = this.accessories.get(uuid)
 
 		let acc: ZencontrolHumidityPlatformAccessory
 		if (existingAccessory) {
 			this.log.info('Restoring existing humidity accessory from cache:', existingAccessory.displayName)
 
-			this.updateAccessory(existingAccessory, { id, label, model, serial })
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
 			acc = new ZencontrolHumidityPlatformAccessory(this, existingAccessory)
-			this.accessoryMap.set(id, acc)
 		} else {
-			this.log.info(`Adding new ${model} humidity accessory:`, label)
+			this.log.info('Adding new humidity accessory:', label)
 
-			const accessory = new this.api.platformAccessory(label, uuid)
-
-			accessory.context.model = model
-			accessory.context.serial = serial
-			accessory.context.id = id
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
 
 			acc = new ZencontrolHumidityPlatformAccessory(this, accessory)
-			this.accessoryMap.set(id, acc)
-
-			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-
-			const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
-				.getCharacteristic(this.Characteristic.Name)
-			nameCharacteristic.updateValue(label)
 		}
+
+		this.accessoriesByAddress.set(address, acc)
 
 		this.discoveredCacheUUIDs.push(uuid)
 		return acc
 	}
 
-	private updateAccessory(existingAccessory: PlatformAccessory, { id, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): boolean {
+	private setupAccessory(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): void {
+		accessory.context.address = address
+		accessory.context.model = model
+		accessory.context.serial = serial
+
+		const nameCharacteristic = accessory.getService(this.Service.AccessoryInformation)!
+			.getCharacteristic(this.Characteristic.Name)
+		nameCharacteristic.updateValue(label)
+
+		this.accessoryNeedsRegister.push(accessory)
+	}
+
+	private updateAccessory(existingAccessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): boolean {
 		const currentDisplayName = existingAccessory.displayName
 		if (currentDisplayName !== label) {
 			this.log.info(`Updating existing ${model} accessory display name:`, label, `(from ${currentDisplayName})`)
@@ -349,16 +338,16 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
 		// this.api.updatePlatformAccessories([existingAccessory])
 		let needsUpdate = false
+		if (existingAccessory.context.address !== address) {
+			existingAccessory.context.address = address
+			needsUpdate = true
+		}
 		if (existingAccessory.context.model !== model) {
 			existingAccessory.context.model = model
 			needsUpdate = true
 		}
 		if (existingAccessory.context.serial !== serial) {
 			existingAccessory.context.serial = serial
-			needsUpdate = true
-		}
-		if (existingAccessory.context.id !== id) {
-			existingAccessory.context.id = id
 			needsUpdate = true
 		}
 
@@ -371,38 +360,38 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 	private async activateLiveEvents() {
 		this.zc.groupLevelChangeCallback = (address, arcLevel) => {
-			const accessoryId = addressToAccessoryId(address)
-			const acc = this.accessoryMap.get(accessoryId)
+			const accessoryId = addressToString(address)
+			const acc = this.accessoriesByAddress.get(accessoryId)
 			if (acc instanceof ZencontrolLightPlatformAccessory) {
-				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
+				acc.receiveArcLevel(arcLevel).catch((reason) => {
 					this.log.warn(`Failed to update group accessory "${acc.displayName}" brightness: ${reason}`)
 				})
 			}
 		}
 		
 		this.zc.levelChangeCallback = (address, arcLevel) => {
-			const accessoryId = addressToAccessoryId(address)
-			const acc = this.accessoryMap.get(accessoryId)
+			const accessoryId = addressToString(address)
+			const acc = this.accessoriesByAddress.get(accessoryId)
 			if (acc instanceof ZencontrolLightPlatformAccessory) {
-				acc.receiveDaliBrightness(arcLevel).catch((reason) => {
-					this.log.warn(`Failed to update ECG accessory "${acc.displayName}" brightness: ${reason}`)
+				acc.receiveArcLevel(arcLevel).catch((reason) => {
+					this.log.warn(`Failed to update accessory "${acc.displayName}" brightness: ${reason}`)
 				})
 			}
 		}
 
 		this.zc.colourChangeCallback = (address, color) => {
-			const accessoryId = addressToAccessoryId(address)
-			const acc = this.accessoryMap.get(accessoryId)
+			const accessoryId = addressToString(address)
+			const acc = this.accessoriesByAddress.get(accessoryId)
 			if (acc instanceof ZencontrolLightPlatformAccessory) {
 				acc.receiveDaliColor(color).catch((reason) => {
-					this.log.warn(`Failed to update ECG accessory "${acc.displayName}" color: ${reason}`)
+					this.log.warn(`Failed to update accessory "${acc.displayName}" color: ${reason}`)
 				})
 			}
 		}
 
 		this.zc.systemVariableChangeCallback = (controller, variable, value) => {
-			const accessoryId = systemVariableToAccessoryId(controller, variable)
-			const acc = this.accessoryMap.get(accessoryId)
+			const accessoryId = systemVariableToAddressString(controller, variable)
+			const acc = this.accessoriesByAddress.get(accessoryId)
 			if (acc instanceof ZencontrolTemperaturePlatformAccessory) {
 				acc.receiveTemperature(value).catch((reason) => {
 					this.log.warn(`Failed to update temperature accessory "${acc.displayName}" color: ${reason}`)
@@ -479,7 +468,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 }
 
-function addressToAccessoryId(address: ZenAddress) {
+function addressToString(address: ZenAddress) {
 	switch (address.type) {
 	case ZenAddressType.BROADCAST:
 		return `BROADCAST ${address.controller.id}`		
@@ -493,8 +482,8 @@ function addressToAccessoryId(address: ZenAddress) {
 	throw new Error(`Unsupported ZenAddressType: ${address.type}`)
 }
 
-function systemVariableToAccessoryId(controller: ZenController, variable: number) {
-	return `SYSVAR ${controller.id}.${variable}`
+function systemVariableToAddressString(controller: ZenController, variable: number) {
+	return `SV ${controller.id} ${variable}`
 }
 
 function isLightControlGear(type: ZenControlGearType) {
