@@ -7,6 +7,7 @@ export interface MyPluginConfig extends PlatformConfig {
 		port?: number
 		macAddress?: string
 	}[]
+	relays?: string[]
 	debug?: boolean
 }
 

@@ -157,6 +157,11 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									return
 								}
 
+								if ((this.config.relays ?? []).indexOf(label) === -1) {
+									this.log.debug(`Ignoring relay "${label}" as it is not listed in the config`)
+									return
+								}
+
 								const acc = this.addRelayAccessory({ address: addressToString(ecg), label, model: 'Relay', serial: `${controller.id}.${ecg.ecg()}` })
 								const level = await this.zc.daliQueryLevel(ecg)
 								if (level !== null) {

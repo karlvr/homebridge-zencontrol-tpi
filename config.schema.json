@@ -9,6 +9,14 @@
 				"title": "Name",
 				"required": true
 			},
+			"relays": {
+				"type": "array",
+				"title": "Relays",
+				"description": "The names of the relays on your controllers that should be includes in HomeKit",
+				"items": {
+					"type": "string"
+				}
+			},
 			"controllers": {
 				"type": "array",
 				"title": "Zencontrol Controllers",
