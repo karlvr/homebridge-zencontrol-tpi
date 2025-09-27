@@ -182,7 +182,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setBrightness(value: CharacteristicValue) {
 		const brightness = value as number
-		this.platform.log.debug(`Set ${this.accessory.displayName} brightness to ${brightness}`)
+		this.platform.log.debug(`Set ${this.accessory.displayName} brightness to ${brightness}%`)
 
 		this.requestBrightness = brightness
 		this.requestBrightnessInstant = true
@@ -226,7 +226,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	}
 
 	private async updateBrightness() {
-		this.platform.log.info(`Updating ${this.displayName} brightness to ${this.requestBrightness}`)
+		this.platform.log.info(`Updating ${this.displayName} brightness to ${this.requestBrightness}%`)
 		try {
 			await this.platform.sendArcLevel(this.accessory.context.address, percentageToArcLevel(this.requestBrightness!), this.requestBrightnessInstant)
 		} catch (error) {
