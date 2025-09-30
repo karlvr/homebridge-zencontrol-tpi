@@ -21,17 +21,17 @@
 	],
 	"author": "Karl von Randow",
 	"license": "Apache-2.0",
-	"packageManager": "pnpm@10.9.0",
+	"packageManager": "pnpm@10.17.1",
 	"devDependencies": {
-		"@eslint/js": "^9.27.0",
-		"@types/node": "^24.0.3",
-		"eslint": "^9.27.0",
-		"homebridge": "^1.9.0",
-		"typescript": "^5.8.3",
-		"typescript-eslint": "^8.32.1"
+		"@eslint/js": "^9.36.0",
+		"@types/node": "^24.5.2",
+		"eslint": "^9.36.0",
+		"homebridge": "^1.11.0",
+		"typescript": "^5.9.2",
+		"typescript-eslint": "^8.44.1"
 	},
 	"dependencies": {
-		"homebridge-lib": "^7.1.5",
+		"homebridge-lib": "^7.1.8",
 		"zencontrol-tpi-node": "file:../zencontrol-tpi-node"
 	}
 }
