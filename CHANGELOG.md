@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.0.3
+
+### Patch Changes
+
+- 771ecc3: Include changelog in package so it shows up in Homebridge
+
 ## 1.0.2
 
 ### Patch Changes
