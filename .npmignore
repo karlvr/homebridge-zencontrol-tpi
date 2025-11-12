@@ -3,7 +3,6 @@
 /.github
 /.nvmrc
 /.vscode
-/*.md
 /*.tgz
 /docs
 /eslint.*
@@ -200,7 +199,3 @@ web_modules/
 # npm
 
 *.tgz
-
-# Documentation
-
-*.md
