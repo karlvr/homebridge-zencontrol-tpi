@@ -279,12 +279,12 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		const on = arcLevel > 0
 
 		if (brightness !== this.knownBrightness) {
-			this.platform.log.debug(`Received from controller: ${this.accessory.displayName} brightness to ${brightness}`)
+			this.platform.log.info(`Received from controller: ${this.accessory.displayName} brightness to ${brightness}`)
 			this.knownBrightness = brightness
 			this.service.updateCharacteristic(this.platform.Characteristic.Brightness, brightness)
 		}
 		if (on !== this.knownOn) {
-			this.platform.log.debug(`Received from controller: ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
+			this.platform.log.info(`Received from controller: ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
 			this.knownOn = on
 			this.service.updateCharacteristic(this.platform.Characteristic.On, on)
 		}

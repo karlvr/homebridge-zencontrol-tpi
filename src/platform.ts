@@ -251,7 +251,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		let acc: ZencontrolLightPlatformAccessory
 		if (existingAccessory) {
 			// the accessory already exists
-			this.log.info('Restoring existing light accessory from cache:', existingAccessory.displayName)
+			this.log.debug('Restoring existing light accessory from cache:', existingAccessory.displayName)
 
 			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
@@ -289,7 +289,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		let acc: ZencontrolRelayPlatformAccessory
 		if (existingAccessory) {
-			this.log.info('Restoring existing relay accessory from cache:', existingAccessory.displayName)
+			this.log.debug('Restoring existing relay accessory from cache:', existingAccessory.displayName)
 
 			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
@@ -315,7 +315,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		let acc: ZencontrolTemperaturePlatformAccessory
 		if (existingAccessory) {
-			this.log.info('Restoring existing temperature accessory from cache:', existingAccessory.displayName)
+			this.log.debug('Restoring existing temperature accessory from cache:', existingAccessory.displayName)
 
 			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
@@ -341,7 +341,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		let acc: ZencontrolHumidityPlatformAccessory
 		if (existingAccessory) {
-			this.log.info('Restoring existing humidity accessory from cache:', existingAccessory.displayName)
+			this.log.debug('Restoring existing humidity accessory from cache:', existingAccessory.displayName)
 
 			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
@@ -367,7 +367,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		let acc: ZencontrolLuxPlatformAccessory
 		if (existingAccessory) {
-			this.log.info('Restoring existing lux accessory from cache:', existingAccessory.displayName)
+			this.log.debug('Restoring existing lux accessory from cache:', existingAccessory.displayName)
 
 			this.updateAccessory(existingAccessory, { address, label, model, serial })
 
