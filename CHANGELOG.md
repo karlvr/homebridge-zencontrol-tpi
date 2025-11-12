@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.0.4
+
+### Patch Changes
+
+- 7c43d03: Update project configuration to specify a git repository to try to show changelog in Homebridge
+
 ## 1.0.3
 
 ### Patch Changes
