@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.0.2
+
+### Patch Changes
+
+- bbc24df: Adjust logging levels so we can see messages received from the controller
+
 ## 1.0.1
 
 ### Patch Changes
