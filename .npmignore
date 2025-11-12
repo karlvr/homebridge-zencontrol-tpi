@@ -199,3 +199,7 @@ web_modules/
 # npm
 
 *.tgz
+
+# Documentation
+
+*.md
