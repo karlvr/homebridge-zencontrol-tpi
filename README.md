@@ -23,3 +23,12 @@ pnpm changeset version
 git commit -a -m "publish: prerelease"
 pnpm changeset publish
 ```
+
+To exit pre-release mode:
+
+```shell
+pnpm changeset pre exit
+pnpm changeset version
+git commit -a -m "publish: release"
+pnpm changeset publish
+```
