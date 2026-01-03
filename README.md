@@ -4,6 +4,17 @@ A plugin for Homebridge that enables control over lights using Zencontrol Third 
 
 ## Testing
 
+## Contributing
+
+This project uses `npm` and [`changesets`](https://github.com/changesets/changesets) for its build process.
+
+When committing a change, please create a changeset:
+
+```shell
+npm exec changeset
+git commit -a "feat: ..."
+```
+
 ## Releasing
 
 ### Pre-release
