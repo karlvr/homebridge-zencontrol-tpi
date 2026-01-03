@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0-next.3
+
+### Patch Changes
+
+- d96d82d: Upgrade zencontrol-tpi-node to fix treatement of unused system variables
+
 ## 1.1.0-next.2
 
 ### Minor Changes
