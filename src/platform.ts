@@ -8,6 +8,7 @@ import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.j
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
 import { ZencontrolRelayPlatformAccessory } from './relayAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
+import { ZencontrolCO2PlatformAccessory } from './co2Accessory.js'
 
 interface ZencontrolTPIPlatformAccessoryOptions {
 	address: string
@@ -213,6 +214,16 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							serial: `SV ${controller.id}.${variable}`,
 						})
 						acc.receiveLux(value)
+					} else if (label && label.toLocaleLowerCase().endsWith(' co2')) {
+						const value = await this.zc.querySystemVariable(controller, variable)
+
+						const acc = this.addCO2Accessory({
+							address: systemVariableToAddressString(controller, variable),
+							label: label.substring(0, label.length - ' co2'.length),
+							model: 'System Variable',
+							serial: `SV ${controller.id}.${variable}`,
+						})
+						acc.receiveCO2(value)
 					}
 				}))
 			}
@@ -401,6 +412,32 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.discoveredCacheUUIDs.push(uuid)
 		return acc
 	}
+	
+	private addCO2Accessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolCO2PlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`co2 @ ${address}`)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolCO2PlatformAccessory
+		if (existingAccessory) {
+			this.log.debug('Restoring existing CO2 accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
+
+			acc = new ZencontrolCO2PlatformAccessory(this, existingAccessory)
+		} else {
+			this.log.info('Adding new CO2 accessory:', label)
+
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
+
+			acc = new ZencontrolCO2PlatformAccessory(this, accessory)
+		}
+
+		this.accessoriesByAddress.set(address, acc)
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
 
 	private setupAccessory(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): void {
 		accessory.context.address = address
@@ -493,6 +530,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			} else if (acc instanceof ZencontrolLuxPlatformAccessory) {
 				acc.receiveLux(value).catch((reason) => {
 					this.log.warn(`Failed to update lux accessory "${acc.displayName}" color: ${reason}`)
+				})
+			} else if (acc instanceof ZencontrolCO2PlatformAccessory) {
+				acc.receiveCO2(value).catch((reason) => {
+					this.log.warn(`Failed to update CO2 accessory "${acc.displayName}" color: ${reason}`)
 				})
 			}
 		}

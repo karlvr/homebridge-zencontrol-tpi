@@ -53,6 +53,12 @@
 					}
 				}
 			},
+			"co2AbnormalLevel": {
+				"type": "integer",
+				"title": "CO2 Abnormal Level",
+				"required": false,
+				"default": 1000
+			},
 			"debug": {
 				"type": "boolean",
 				"title": "Debug logging",

@@ -8,6 +8,7 @@ export interface MyPluginConfig extends PlatformConfig {
 		macAddress?: string
 	}[]
 	relays?: string[]
+	co2AbnormalLevel?: number
 	debug?: boolean
 }
 
