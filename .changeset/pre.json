@@ -5,6 +5,7 @@
     "homebridge-zencontrol-tpi": "1.0.4"
   },
   "changesets": [
+    "cozy-pens-sing",
     "metal-days-exist"
   ]
 }
