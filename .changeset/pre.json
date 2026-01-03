@@ -5,7 +5,10 @@
     "homebridge-zencontrol-tpi": "1.0.4"
   },
   "changesets": [
+    "blue-readers-admire",
     "cozy-pens-sing",
-    "metal-days-exist"
+    "five-ends-talk",
+    "metal-days-exist",
+    "twelve-candies-shave"
   ]
 }

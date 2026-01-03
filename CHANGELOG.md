@@ -1,5 +1,16 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0-next.2
+
+### Minor Changes
+
+- 30f74dd: Add CO2 sensors
+
+### Patch Changes
+
+- 74d8166: Include CHANGELOG.md in package so it is visible in Homebridge
+- 11eee07: Fix missing humidity sensor updates
+
 ## 1.1.0-next.1
 
 ### Patch Changes
