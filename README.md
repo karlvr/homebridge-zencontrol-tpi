@@ -11,7 +11,7 @@ A plugin for Homebridge that enables control over lights using Zencontrol Third 
 To enter pre-release mode:
 
 ```shell
-pnpm changeset pre enter next
+npm exec changeset pre enter next
 git add .changeset/pre.json
 git commit -m "publish: enter prerelease"
 ```
@@ -19,16 +19,16 @@ git commit -m "publish: enter prerelease"
 Once you've made changes and committed one or more changesets; bump the version:
 
 ```shell
-pnpm run release:version
+npm run release:version
 git commit -a -m "publish: prerelease"
-pnpm run release
+npm run release
 ```
 
 To exit pre-release mode:
 
 ```shell
-pnpm changeset pre exit
-pnpm run release:version
+npm exec changeset pre exit
+npm run release:version
 git commit -a -m "publish: release"
-pnpm run release
+npm run release
 ```
