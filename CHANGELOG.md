@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0-next.0
+
+### Minor Changes
+
+- f97fd3f: Remove type names from system variables and detect only based on end of variable name
+
 ## 1.0.4
 
 ### Patch Changes

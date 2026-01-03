@@ -4,5 +4,7 @@
   "initialVersions": {
     "homebridge-zencontrol-tpi": "1.0.4"
   },
-  "changesets": []
+  "changesets": [
+    "metal-days-exist"
+  ]
 }

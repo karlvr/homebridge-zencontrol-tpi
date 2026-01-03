@@ -20,6 +20,6 @@ Once you've made changes and committed one or more changesets; bump the version:
 
 ```shell
 pnpm changeset version
-git commit -m "publish"
+git commit -a -m "publish: prerelease"
 pnpm changeset publish
 ```
