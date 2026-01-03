@@ -486,6 +486,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				acc.receiveTemperature(value).catch((reason) => {
 					this.log.warn(`Failed to update temperature accessory "${acc.displayName}" color: ${reason}`)
 				})
+			} else if (acc instanceof ZencontrolHumidityPlatformAccessory) {
+				acc.receiveHumidity(value).catch((reason) => {
+					this.log.warn(`Failed to update humidity accessory "${acc.displayName}" color: ${reason}`)
+				})
 			} else if (acc instanceof ZencontrolLuxPlatformAccessory) {
 				acc.receiveLux(value).catch((reason) => {
 					this.log.warn(`Failed to update lux accessory "${acc.displayName}" color: ${reason}`)
