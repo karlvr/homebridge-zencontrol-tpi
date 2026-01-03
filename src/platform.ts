@@ -176,7 +176,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			for (let variable = 0; variable < ZenConst.MAX_SYSVAR; variable++) {
 				promises.push(this.zc.querySystemVariableName(controller, variable).then(async label => {
-					if (label && label.toLocaleLowerCase().indexOf('temperature') !== -1) {
+					if (label && label.toLocaleLowerCase().endsWith(' temperature')) {
 						let value = await this.zc.querySystemVariable(controller, variable)
 
 						/* This API doesn't respect magnitude so we have to guess */
@@ -186,17 +186,32 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							}
 						}
 
-						const acc = this.addTemperatureAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						const acc = this.addTemperatureAccessory({
+							address: systemVariableToAddressString(controller, variable),
+							label: label.substring(0, label.length - ' temperature'.length),
+							model: 'System Variable',
+							serial: `SV ${controller.id}.${variable}`,
+						})
 						acc.receiveTemperature(value)
-					} else if (label && label.toLocaleLowerCase().indexOf('humidity') !== -1) {
+					} else if (label && label.toLocaleLowerCase().endsWith(' humidity')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addHumidityAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						const acc = this.addHumidityAccessory({
+							address: systemVariableToAddressString(controller, variable),
+							label: label.substring(0, label.length - ' humidity'.length),
+							model: 'System Variable',
+							serial: `SV ${controller.id}.${variable}`,
+						})
 						acc.receiveHumidity(value)
-					} else if (label && label.toLocaleLowerCase().indexOf('lux') !== -1) {
+					} else if (label && label.toLocaleLowerCase().endsWith(' lux')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addLuxAccessory({ address: systemVariableToAddressString(controller, variable), label, model: 'System Variable', serial: `SV ${controller.id}.${variable}` })
+						const acc = this.addLuxAccessory({
+							address: systemVariableToAddressString(controller, variable),
+							label: label.substring(0, label.length - ' lux'.length),
+							model: 'System Variable',
+							serial: `SV ${controller.id}.${variable}`,
+						})
 						acc.receiveLux(value)
 					}
 				}))
