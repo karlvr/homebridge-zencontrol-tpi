@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0-next.5
+
+### Patch Changes
+
+- 9e59549: Fix blind accessory to have different UUID so it doesn't collide with relay accessory if it already exists
+
 ## 1.1.0-next.4
 
 ### Minor Changes
