@@ -35,12 +35,14 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	private accessoryNeedsRegister: PlatformAccessory[] = []
 	private accessoryNeedsUpdate: PlatformAccessory[] = []
 	private lastSentDAPC = new Map<string, number>()
+	readonly config: MyPluginConfig
 
 	constructor(
 		public readonly log: Logging,
-		public readonly config: MyPluginConfig,
+		config: MyPluginConfig & PlatformConfig,
 		public readonly api: API,
 	) {
+		this.config = config
 		this.Service = api.hap.Service
 		this.Characteristic = api.hap.Characteristic
 

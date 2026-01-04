@@ -1,6 +1,7 @@
 import { PlatformConfig } from 'homebridge'
 
-export interface MyPluginConfig extends PlatformConfig {
+export interface MyPluginConfig {
+	name: PlatformConfig['name']
 	controllers?: {
 		id?: number
 		address?: string
