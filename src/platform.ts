@@ -355,7 +355,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	}
 
 	private addBlindAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolBlindPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`relay @ ${address}`)
+		const uuid = this.api.hap.uuid.generate(`blind @ ${address}`)
 		const existingAccessory = this.accessories.get(uuid)
 
 		let acc: ZencontrolBlindPlatformAccessory
