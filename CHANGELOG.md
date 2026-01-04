@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0-next.4
+
+### Minor Changes
+
+- 86419e7: Add blind controller support
+
 ## 1.1.0-next.3
 
 ### Patch Changes
