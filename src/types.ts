@@ -8,6 +8,7 @@ export interface MyPluginConfig {
 		port?: number
 		macAddress?: string
 	}[]
+	blinds?: string[]
 	relays?: string[]
 	co2AbnormalLevel?: number
 	debug?: boolean

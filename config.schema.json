@@ -9,10 +9,18 @@
 				"title": "Name",
 				"required": true
 			},
+			"blinds": {
+				"type": "array",
+				"title": "Blinds",
+				"description": "The names of the Blind Controller relays on your controllers.",
+				"items": {
+					"type": "string"
+				}
+			},
 			"relays": {
 				"type": "array",
-				"title": "Relays",
-				"description": "The names of the relays on your controllers that should be includes in HomeKit",
+				"title": "Switches",
+				"description": "The names of the relays on your controllers that should be represented as Switches.",
 				"items": {
 					"type": "string"
 				}
@@ -57,7 +65,7 @@
 				"type": "integer",
 				"title": "CO2 Abnormal Level",
 				"required": false,
-				"default": 1000
+				"default": 2000
 			},
 			"debug": {
 				"type": "boolean",

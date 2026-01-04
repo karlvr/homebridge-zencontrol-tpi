@@ -1,7 +1,6 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { arcLevelToPercentage, percentageToArcLevel, ZenColour } from 'zencontrol-tpi-node'
 import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
 export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAccessory {
@@ -39,7 +38,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setOn(value: CharacteristicValue) {
 		const on = value as boolean
-		this.platform.log.debug(`Set ${this.accessory.displayName} (${this.accessory.context.address}) to ${on ? 'on' : 'off'}`)
+		this.platform.log.debug(`Set relay ${this.accessory.displayName} (${this.accessory.context.address}) to ${on ? 'on' : 'off'}`)
 
 		this.requestOn = !!on
 
@@ -63,7 +62,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 		const on = arcLevel > 0
 
 		if (on !== this.knownOn) {
-			this.platform.log.debug(`Controller updated ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
+			this.platform.log.debug(`Controller updated relay ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
 			this.knownOn = on
 			this.service.updateCharacteristic(this.platform.Characteristic.On, on)
 		}

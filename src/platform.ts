@@ -7,6 +7,7 @@ import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearT
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
 import { ZencontrolRelayPlatformAccessory } from './relayAccessory.js'
+import { ZencontrolBlindPlatformAccessory } from './blindAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
 import { ZencontrolCO2PlatformAccessory } from './co2Accessory.js'
 
@@ -160,15 +161,31 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									return
 								}
 
-								if ((this.config.relays ?? []).indexOf(label) === -1) {
+								if ((this.config.relays ?? []).indexOf(label) !== -1) {
+									const acc = this.addRelayAccessory({
+										address: addressToString(ecg),
+										label,
+										model: 'Relay',
+										serial: `${controller.id}.${ecg.ecg()}`,
+									})
+									const level = await this.zc.daliQueryLevel(ecg)
+									if (level !== null) {
+										acc.receiveArcLevel(level)
+									}
+								} else if ((this.config.blinds ?? []).indexOf(label) !== -1) {
+									const acc = this.addBlindAccessory({
+										address: addressToString(ecg),
+										label,
+										model: 'Relay',
+										serial: `${controller.id}.${ecg.ecg()}`,
+									})
+									const level = await this.zc.daliQueryLevel(ecg)
+									if (level !== null) {
+										acc.receiveArcLevel(level)
+									}
+								} else {
 									this.log.debug(`Ignoring relay "${label}" as it is not listed in the config`)
 									return
-								}
-
-								const acc = this.addRelayAccessory({ address: addressToString(ecg), label, model: 'Relay', serial: `${controller.id}.${ecg.ecg()}` })
-								const level = await this.zc.daliQueryLevel(ecg)
-								if (level !== null) {
-									acc.receiveArcLevel(level)
 								}
 							}
 						}
@@ -329,6 +346,32 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			this.setupAccessory(accessory, { address, label, model, serial })
 
 			acc = new ZencontrolRelayPlatformAccessory(this, accessory)
+		}
+
+		this.accessoriesByAddress.set(address, acc)
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
+
+	private addBlindAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolBlindPlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`relay @ ${address}`)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolBlindPlatformAccessory
+		if (existingAccessory) {
+			this.log.debug('Restoring existing blind accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
+
+			acc = new ZencontrolBlindPlatformAccessory(this, existingAccessory)
+		} else {
+			this.log.info('Adding new blind accessory:', label)
+
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
+
+			acc = new ZencontrolBlindPlatformAccessory(this, accessory)
 		}
 
 		this.accessoriesByAddress.set(address, acc)
@@ -501,7 +544,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.zc.levelChangeCallback = (address, arcLevel) => {
 			const accessoryId = addressToString(address)
 			const acc = this.accessoriesByAddress.get(accessoryId)
-			if (acc instanceof ZencontrolLightPlatformAccessory || acc instanceof ZencontrolRelayPlatformAccessory) {
+			if (acc instanceof ZencontrolLightPlatformAccessory || acc instanceof ZencontrolRelayPlatformAccessory || acc instanceof ZencontrolBlindPlatformAccessory) {
 				acc.receiveArcLevel(arcLevel).catch((reason) => {
 					this.log.warn(`Failed to update accessory "${acc.displayName}" brightness: ${reason}`)
 				})
