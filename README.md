@@ -2,7 +2,22 @@
 
 A plugin for Homebridge that enables control over lights using Zencontrol Third Party Interface (TPI).
 
-## Testing
+## Development
+
+```shell
+nvm install
+nvm use
+npm install
+npm run build
+```
+
+When I make changes I like to test them on my local Homebridge, which is on another device accessible via ssh:
+
+```shell
+npm run build && rsync -a dist ubuntu@192.168.1.2:/var/lib/homebridge/node_modules/homebridge-zencontrol-tpi/
+```
+
+Then I restart Homebridge to load the updated code.
 
 ## Contributing
 
