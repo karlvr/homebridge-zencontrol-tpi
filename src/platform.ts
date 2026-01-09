@@ -565,22 +565,28 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.zc.systemVariableChangeCallback = (controller, variable, value) => {
 			const accessoryId = systemVariableToAddressString(controller, variable)
 			const acc = this.accessoriesByAddress.get(accessoryId)
+			if (!acc) {
+				return
+			}
+
 			if (acc instanceof ZencontrolTemperaturePlatformAccessory) {
 				acc.receiveTemperature(value).catch((reason) => {
-					this.log.warn(`Failed to update temperature accessory "${acc.displayName}" color: ${reason}`)
+					this.log.warn(`Failed to update temperature accessory "${acc.displayName}": ${reason}`)
 				})
 			} else if (acc instanceof ZencontrolHumidityPlatformAccessory) {
 				acc.receiveHumidity(value).catch((reason) => {
-					this.log.warn(`Failed to update humidity accessory "${acc.displayName}" color: ${reason}`)
+					this.log.warn(`Failed to update humidity accessory "${acc.displayName}": ${reason}`)
 				})
 			} else if (acc instanceof ZencontrolLuxPlatformAccessory) {
 				acc.receiveLux(value).catch((reason) => {
-					this.log.warn(`Failed to update lux accessory "${acc.displayName}" color: ${reason}`)
+					this.log.warn(`Failed to update lux accessory "${acc.displayName}": ${reason}`)
 				})
 			} else if (acc instanceof ZencontrolCO2PlatformAccessory) {
 				acc.receiveCO2(value).catch((reason) => {
-					this.log.warn(`Failed to update CO2 accessory "${acc.displayName}" color: ${reason}`)
+					this.log.warn(`Failed to update CO2 accessory "${acc.displayName}": ${reason}`)
 				})
+			} else {
+				this.log.warn(`Received system variable change for unsupported accessory: ${acc?.displayName}`)
 			}
 		}
 
