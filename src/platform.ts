@@ -84,7 +84,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.api.on('didFinishLaunching', () => {
 			log.debug('Executed didFinishLaunching callback')
 			// run the method to discover / register your devices as accessories
-			this.discoverDevices()
+			this.discoverDevices().then(() => {
+				this.activateLiveEvents()
+			})
 		})
 	}
 
@@ -280,7 +282,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 
 		this.log.info('Device discovery complete')
-		this.activateLiveEvents()
 	}
 
 	private addLightAccessory({ address, label, model, serial, ...options }: ZencontrolTPIPlatformAccessoryOptions & ZencontrolLightOptions): ZencontrolLightPlatformAccessory {
