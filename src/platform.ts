@@ -165,8 +165,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									return
 								}
 
-								if ((this.config.relays ?? []).indexOf(label) !== -1) {
-									const acc = this.addRelayAccessory({
+								if ((this.config.blinds ?? []).indexOf(label) !== -1) {
+									const acc = this.addBlindAccessory({
 										address: addressToString(ecg),
 										label,
 										model: 'Relay',
@@ -176,8 +176,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									if (level !== null) {
 										acc.receiveArcLevel(level)
 									}
-								} else if ((this.config.blinds ?? []).indexOf(label) !== -1) {
-									const acc = this.addBlindAccessory({
+								} else if ((this.config.relays ?? []).indexOf(label) !== -1) {
+									const acc = this.addRelayAccessory({
 										address: addressToString(ecg),
 										label,
 										model: 'Relay',
