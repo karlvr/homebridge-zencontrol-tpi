@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0-next.6
+
+### Minor Changes
+
+- 1b01c14: Add windows
+
 ## 1.1.0-next.5
 
 ### Patch Changes
