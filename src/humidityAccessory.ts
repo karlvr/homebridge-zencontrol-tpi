@@ -1,9 +1,9 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
-export class ZencontrolHumidityPlatformAccessory implements ZencontrolTPIPlatformAccessory {
+export class ZencontrolHumidityPlatformAccessory implements ZencontrolTPIPlatformAccessory, ZencontrolSystemVariableAccessory {
 	private service: Service
 
 	private knownHumidity: number | null = null
@@ -33,12 +33,16 @@ export class ZencontrolHumidityPlatformAccessory implements ZencontrolTPIPlatfor
 		return this.knownHumidity
 	}
 
-	async receiveHumidity(humidity: number | null) {
+	private async receiveHumidity(humidity: number | null) {
 		this.knownHumidity = humidity
 
 		this.platform.log(`Received humidity for ${this.displayName}: ${humidity}`)
 
 		this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity)
+	}
+
+	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
+		await this.receiveHumidity(value)
 	}
 
 }

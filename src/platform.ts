@@ -2,12 +2,13 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 
 import { ZencontrolLightOptions, ZencontrolLightPlatformAccessory } from './lightAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
-import { MyPluginConfig, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { isZencontrolSystemVariableAccessory, MyPluginConfig, ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
 import { ZencontrolRelayPlatformAccessory } from './relayAccessory.js'
 import { ZencontrolBlindPlatformAccessory } from './blindAccessory.js'
+import { ZencontrolWindowPlatformAccessory } from './windowAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
 import { ZencontrolCO2PlatformAccessory } from './co2Accessory.js'
 
@@ -111,8 +112,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.accessoriesByAddress.clear()
 
 		const promises: Promise<unknown>[] = []
+		const positionVariables: { label: string, address: string, value: number | null }[] = []
 
-		/* First-phase discovery */
 		for (const controller of this.zc.controllers) {
 			/* Discover groups */
 			promises.push(this.zc.queryGroupNumbers(controller).then((groups) => {
@@ -197,97 +198,68 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				}
 				return Promise.all(promises)
 			}))
-		}
 
-		try {
-			await Promise.all(promises)
-		} catch (error) {
-			this.log.error('Failed to discover devices', error)
-
-			/* Return so we don't remove accessories, as then the user will have to set them all up again! Adding them to rooms etc */
-			return
-		}
-
-		promises.splice(0, promises.length)
-
-		/* Second-phase discovery; may use some first-phase discovered devices */
-		for (const controller of this.zc.controllers) {
 			for (let variable = 0; variable < ZenConst.MAX_SYSVAR; variable++) {
 				promises.push(this.zc.querySystemVariableName(controller, variable).then(async label => {
 					if (!label) {
 						return
 					}
-					if (label.toLocaleLowerCase().endsWith(' temperature')) {
-						let value = await this.zc.querySystemVariable(controller, variable)
 
-						/* This API doesn't respect magnitude so we have to guess */
-						if (value !== null) {
-							while (value > 100) {
-								value /= 10
-							}
-						}
+					const address = systemVariableToAddressString(controller, variable)
+
+					if ((this.config.windows ?? []).indexOf(label) !== -1) {
+						const value = await this.zc.querySystemVariable(controller, variable)
+
+						const acc = this.addWindowAccessory({
+							address,
+							label,
+							model: 'System Variable',
+							serial: `SV ${controller.id}.${variable}`,
+						})
+						acc.receiveSystemVariableChange(address, value)
+					} else if (label.toLocaleLowerCase().endsWith(' temperature')) {
+						const value = await this.zc.querySystemVariable(controller, variable)
 
 						const acc = this.addTemperatureAccessory({
-							address: systemVariableToAddressString(controller, variable),
+							address,
 							label: label.substring(0, label.length - ' temperature'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
 						})
-						acc.receiveTemperature(value)
+						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' humidity')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
 						const acc = this.addHumidityAccessory({
-							address: systemVariableToAddressString(controller, variable),
+							address,
 							label: label.substring(0, label.length - ' humidity'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
 						})
-						acc.receiveHumidity(value)
+						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' lux')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
 						const acc = this.addLuxAccessory({
-							address: systemVariableToAddressString(controller, variable),
+							address,
 							label: label.substring(0, label.length - ' lux'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
 						})
-						acc.receiveLux(value)
+						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' co2')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
 						const acc = this.addCO2Accessory({
-							address: systemVariableToAddressString(controller, variable),
+							address,
 							label: label.substring(0, label.length - ' co2'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
 						})
-						acc.receiveCO2(value)
-					} else if (label.toLocaleLowerCase().endsWith(' blind position')) {
+						acc.receiveSystemVariableChange(address, value)
+					} else if (label.toLocaleLowerCase().endsWith(' position')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
-
-						let foundAcc: ZencontrolBlindPlatformAccessory | undefined = undefined
-						for (const [_, acc] of this.accessoriesByAddress) {
-							if (acc instanceof ZencontrolBlindPlatformAccessory) {
-								if ((acc.displayName + ' position').toLocaleLowerCase() === label.toLocaleLowerCase()) {
-									foundAcc = acc
-									break
-								}
-							}
-						}
-
-						if (foundAcc) {
-							this.log.info(`Found system variable for blind position for ${foundAcc.displayName}: ${label}`)
-							foundAcc.hasSystemVariable = true
-
-							this.accessoriesByAddress.set(systemVariableToAddressString(controller, variable), foundAcc)
-							if (value !== null) {
-								foundAcc.receivePosition(value)
-							}
-						} else {
-							this.log.debug(`Ignoring system variable as no matching blind relay found: ${label}`)
-						}
+						positionVariables.push({ label, address, value })
 					}
 				}))
 			}
@@ -300,6 +272,29 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 			/* Return so we don't remove accessories, as then the user will have to set them all up again! Adding them to rooms etc */
 			return
+		}
+
+		/* Position variables; we come back and handle the position variables now that we've created all of the accessories */
+		for (const { label, address, value } of positionVariables) {
+			let foundAcc: ZencontrolBlindPlatformAccessory | ZencontrolWindowPlatformAccessory | undefined = undefined
+			for (const [_, acc] of this.accessoriesByAddress) {
+				if (acc instanceof ZencontrolBlindPlatformAccessory || acc instanceof ZencontrolWindowPlatformAccessory) {
+					if ((acc.displayName + ' position').toLocaleLowerCase() === label.toLocaleLowerCase()) {
+						foundAcc = acc
+						break
+					}
+				}
+			}
+
+			if (foundAcc) {
+				this.log.info(`Found position system variable for ${foundAcc.displayName}: ${label}`)
+				foundAcc.positionSystemVariableAddress = address
+
+				this.accessoriesByAddress.set(address, foundAcc)
+				foundAcc.receiveSystemVariableChange(address, value)
+			} else {
+				this.log.debug(`Ignoring position system variable as no matching accessory found: ${label}`)
+			}
 		}
 
 		// you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
@@ -416,6 +411,32 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			this.setupAccessory(accessory, { address, label, model, serial })
 
 			acc = new ZencontrolBlindPlatformAccessory(this, accessory)
+		}
+
+		this.accessoriesByAddress.set(address, acc)
+
+		this.discoveredCacheUUIDs.push(uuid)
+		return acc
+	}
+
+	private addWindowAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolWindowPlatformAccessory {
+		const uuid = this.api.hap.uuid.generate(`window @ ${address}`)
+		const existingAccessory = this.accessories.get(uuid)
+
+		let acc: ZencontrolWindowPlatformAccessory
+		if (existingAccessory) {
+			this.log.debug('Restoring existing window accessory from cache:', existingAccessory.displayName)
+
+			this.updateAccessory(existingAccessory, { address, label, model, serial })
+
+			acc = new ZencontrolWindowPlatformAccessory(this, existingAccessory, address)
+		} else {
+			this.log.info('Adding new window accessory:', label)
+
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
+			this.setupAccessory(accessory, { address, label, model, serial })
+
+			acc = new ZencontrolWindowPlatformAccessory(this, accessory, address)
 		}
 
 		this.accessoriesByAddress.set(address, acc)
@@ -606,31 +627,15 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 
 		this.zc.systemVariableChangeCallback = (controller, variable, value) => {
-			const accessoryId = systemVariableToAddressString(controller, variable)
-			const acc = this.accessoriesByAddress.get(accessoryId)
+			const variableAddress = systemVariableToAddressString(controller, variable)
+			const acc = this.accessoriesByAddress.get(variableAddress)
 			if (!acc) {
 				return
 			}
 
-			if (acc instanceof ZencontrolTemperaturePlatformAccessory) {
-				acc.receiveTemperature(value).catch((reason) => {
-					this.log.warn(`Failed to update temperature accessory "${acc.displayName}": ${reason}`)
-				})
-			} else if (acc instanceof ZencontrolHumidityPlatformAccessory) {
-				acc.receiveHumidity(value).catch((reason) => {
-					this.log.warn(`Failed to update humidity accessory "${acc.displayName}": ${reason}`)
-				})
-			} else if (acc instanceof ZencontrolLuxPlatformAccessory) {
-				acc.receiveLux(value).catch((reason) => {
-					this.log.warn(`Failed to update lux accessory "${acc.displayName}": ${reason}`)
-				})
-			} else if (acc instanceof ZencontrolCO2PlatformAccessory) {
-				acc.receiveCO2(value).catch((reason) => {
-					this.log.warn(`Failed to update CO2 accessory "${acc.displayName}": ${reason}`)
-				})
-			} else if (acc instanceof ZencontrolBlindPlatformAccessory) {
-				acc.receivePosition(value).catch((reason) => {
-					this.log.warn(`Failed to update blind accessory "${acc.displayName}": ${reason}`)
+			if (isZencontrolSystemVariableAccessory(acc)) {
+				acc.receiveSystemVariableChange(variableAddress, value).catch((reason) => {
+					this.log.warn(`Failed to update accessory "${acc.displayName}": ${reason}`)
 				})
 			} else {
 				this.log.warn(`Received system variable change for unsupported accessory: ${acc?.displayName}`)
@@ -649,7 +654,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 
 		try {
-			await this.zc.daliArcLevel(address, arcLevel)
+			const result = await this.zc.daliArcLevel(address, arcLevel)
+			if (!result) {
+				this.log.warn(`Failed to send arc level ${arcLevel} for ${address}`)
+			}
 		} catch (error) {
 			this.log.warn(`Failed to send arc level for ${address}:`, error)
 		}
@@ -658,7 +666,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	async sendOff(accessoryId: string): Promise<void> {
 		const address = this.parseAccessoryId(accessoryId)
 		try {
-			await this.zc.daliOff(address)
+			const result = await this.zc.daliOff(address)
+			if (!result) {
+				this.log.warn(`Failed to send off for ${address}`)
+			}
 		} catch (error) {
 			this.log.warn(`Failed to send off for ${address}:`, error)
 		}
@@ -667,7 +678,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	async sendRecallMin(accessoryId: string): Promise<void> {
 		const address = this.parseAccessoryId(accessoryId)
 		try {
-			await this.zc.daliRecallMin(address)
+			const result = await this.zc.daliRecallMin(address)
+			if (!result) {
+				this.log.warn(`Failed to send recall min for ${address}`)
+			}
 		} catch (error) {
 			this.log.warn(`Failed to send recall min for ${address}:`, error)
 		}
@@ -676,9 +690,24 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	async sendRecallMax(accessoryId: string): Promise<void> {
 		const address = this.parseAccessoryId(accessoryId)
 		try {
-			await this.zc.daliRecallMax(address)
+			const result = await this.zc.daliRecallMax(address)
+			if (!result) {
+				this.log.warn(`Failed to send recall max for ${address}`)
+			}
 		} catch (error) {
 			this.log.warn(`Failed to send recall max for ${address}:`, error)
+		}
+	}
+
+	async setSystemVariable(address: string, value: number): Promise<void> {
+		const { controller, variable } = this.parseSystemVariableAddress(address)
+		try {
+			const result = await this.zc.setSystemVariable(controller, variable, value)
+			if (!result) {
+				this.log.warn(`Failed to set system variable ${controller.id}.${variable} to ${value}`)
+			}
+		} catch (error) {
+			this.log.warn(`Failed to set system variable ${controller.id}.${variable} to ${value}: ${error}`)
 		}
 	}
 
@@ -728,6 +757,25 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			return new ZenAddress(controller, ZenAddressType.ECD, parseInt(parts[2]))
 		} else {
 			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
+		}
+	}
+
+	private parseSystemVariableAddress(address: string): { controller: ZenController, variable: number } {
+		const parts = address.split(' ')
+		if (parts.length < 2) {
+			throw new Error(`Unrecognised system variable adddress: ${address}`)
+		}
+
+		const controllerId = parseInt(parts[1])
+		const controller = this.zc.controllers.find(c => c.id === controllerId)
+		if (!controller) {
+			throw new Error(`Unknown controller id: ${controllerId}`)
+		}
+			
+		if (parts[0] === 'SV') {
+			return { controller, variable: Number(parts[2]) }
+		} else {
+			throw new Error(`Unrecognised system variable address: ${address}`)
 		}
 	}
 

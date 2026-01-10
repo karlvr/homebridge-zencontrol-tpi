@@ -17,6 +17,14 @@
 					"type": "string"
 				}
 			},
+			"windows": {
+				"type": "array",
+				"title": "Windows",
+				"description": "The names of system variables on your controllers that should be represented as windows.",
+				"items": {
+					"type": "string"
+				}
+			},
 			"relays": {
 				"type": "array",
 				"title": "Switches",

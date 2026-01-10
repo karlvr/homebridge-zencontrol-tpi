@@ -1,9 +1,9 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
-export class ZencontrolLuxPlatformAccessory implements ZencontrolTPIPlatformAccessory {
+export class ZencontrolLuxPlatformAccessory implements ZencontrolTPIPlatformAccessory, ZencontrolSystemVariableAccessory {
 	private service: Service
 
 	private knownLux: number | null = null
@@ -37,12 +37,16 @@ export class ZencontrolLuxPlatformAccessory implements ZencontrolTPIPlatformAcce
 		return this.knownLux
 	}
 
-	async receiveLux(lux: number | null) {
+	private async receiveLux(lux: number | null) {
 		this.knownLux = lux
 
 		this.platform.log(`Received lux for ${this.displayName}: ${lux}`)
 
 		this.service.updateCharacteristic(this.platform.Characteristic.CurrentAmbientLightLevel, lux)
+	}
+
+	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
+		this.receiveLux(value)
 	}
 
 }

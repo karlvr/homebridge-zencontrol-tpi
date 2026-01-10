@@ -1,9 +1,9 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
-export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlatformAccessory {
+export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlatformAccessory, ZencontrolSystemVariableAccessory {
 	private service: Service
 
 	private knownTemperature: number | null = null
@@ -33,7 +33,7 @@ export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlat
 		return this.knownTemperature
 	}
 
-	async receiveTemperature(temperature: number | null) {
+	private async receiveTemperature(temperature: number | null) {
 		/* We are receiving notifications that have magnitude 0 but are 10 times too big */
 		if (temperature !== null) {
 			while (temperature > 100) {
@@ -46,6 +46,10 @@ export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlat
 		this.platform.log(`Received temperature for ${this.displayName}: ${temperature}`)
 
 		this.service.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, temperature)
+	}
+
+	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
+		this.receiveTemperature(value)
 	}
 
 }

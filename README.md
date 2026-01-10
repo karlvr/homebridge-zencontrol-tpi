@@ -21,6 +21,22 @@ If a system variable exists with the same name as the blind but with the word "P
 the position of the blind (0 = closed, 100 = open). This is because the blind controller arc level may not accurately reflect the
 blind position if it resets to 0 after some time.
 
+If the position system variable is available, HomeKit will send a Recall Min to the blind (instead of the expected Off), and you must
+setup a trigger + sequence to convert that to Off and to update the position system variable.
+
+### Windows
+
+If you have windows controlled by a system variable pair—one for control and one for position—you can list the control variable name in
+the plugin configuration.
+
+The plugin assumes that the control system variable is set to:
+* 0 for stopped
+* 1 for closing
+* 2 for opening
+
+There should be a position system variable with the same name as the control variable with the word "Position" after it. This has
+the same semantics as for blinds.
+
 ### Relays
 
 Any relay that has its name (Location name) listed in the Switches list in the plugin configuration will be represented as a switch. Only named relays

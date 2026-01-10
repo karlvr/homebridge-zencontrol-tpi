@@ -1,9 +1,9 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
-export class ZencontrolCO2PlatformAccessory implements ZencontrolTPIPlatformAccessory {
+export class ZencontrolCO2PlatformAccessory implements ZencontrolTPIPlatformAccessory, ZencontrolSystemVariableAccessory {
 	private service: Service
 
 	private knownCO2: number | null = null
@@ -44,12 +44,16 @@ export class ZencontrolCO2PlatformAccessory implements ZencontrolTPIPlatformAcce
 		return this.knownCO2
 	}
 
-	async receiveCO2(co2: number | null) {
+	private async receiveCO2(co2: number | null) {
 		this.knownCO2 = co2
 
 		this.platform.log(`Received CO2 for ${this.displayName}: ${co2}`)
 
 		this.service.updateCharacteristic(this.platform.Characteristic.CarbonDioxideLevel, co2)
+	}
+
+	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
+		await this.receiveCO2(value)
 	}
 
 }
