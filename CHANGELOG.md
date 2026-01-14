@@ -1,5 +1,24 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.0
+
+### Minor Changes
+
+- 9ef3e7f: Refactor to remove duplicated code
+- 1b01c14: Add windows
+- 30f74dd: Add CO2 sensors
+- 86419e7: Add blind controller support
+- 43f5e15: Add fans
+- f97fd3f: Remove type names from system variables and detect only based on end of variable name
+
+### Patch Changes
+
+- 74d8166: Include CHANGELOG.md in package so it is visible in Homebridge
+- d5392bc: Upgrade dependencies
+- 9e59549: Fix blind accessory to have different UUID so it doesn't collide with relay accessory if it already exists
+- 11eee07: Fix missing humidity sensor updates
+- d96d82d: Upgrade zencontrol-tpi-node to fix treatement of unused system variables
+
 ## 1.1.0-next.6
 
 ### Minor Changes
