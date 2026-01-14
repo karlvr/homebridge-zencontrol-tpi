@@ -7,6 +7,7 @@ import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearT
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
 import { ZencontrolRelayPlatformAccessory } from './relayAccessory.js'
+import { ZencontrolFanPlatformAccessory } from './fanAccessory.js'
 import { ZencontrolBlindPlatformAccessory } from './blindAccessory.js'
 import { ZencontrolWindowPlatformAccessory } from './windowAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
@@ -203,6 +204,20 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									if (level !== null) {
 										acc.receiveArcLevel(level)
 									}
+								} else if ((this.config.fans ?? []).indexOf(label) !== -1) {
+									const acc = this.addAccessory({
+										address: addressToString(ecg),
+										label,
+										model: 'Fan',
+										serial: `${controller.id}.${ecg.ecg()}`,
+										accessoryTypeName: 'fan',
+										AccessoryClass: ZencontrolFanPlatformAccessory,
+										options: {},
+									})
+									const level = await this.zc.daliQueryLevel(ecg)
+									if (level !== null) {
+										acc.receiveArcLevel(level)
+									}
 								} else if ((this.config.relays ?? []).indexOf(label) !== -1) {
 									const acc = this.addAccessory({
 										address: addressToString(ecg),
@@ -218,7 +233,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 										acc.receiveArcLevel(level)
 									}
 								} else {
-									this.log.debug(`Ignoring relay "${label}" as it is not listed in the config`)
+									this.log.debug(`Ignoring relay as it is not listed in the config: ${label}`)
 									return
 								}
 							}
@@ -306,6 +321,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 					} else if (label.toLocaleLowerCase().endsWith(' position')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 						positionVariables.push({ label, address, value })
+					} else {
+						this.log.debug(`Ignoring unrecognised system variable: ${label}`)
 					}
 				}))
 			}

@@ -3,7 +3,7 @@ import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge
 import type { ZencontrolTPIPlatform } from './platform.js'
 import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
-export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAccessory {
+export class ZencontrolFanPlatformAccessory implements ZencontrolTPIPlatformAccessory {
 	private service: Service
 
 	private knownOn = false
@@ -18,10 +18,10 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 			.setCharacteristic(this.platform.Characteristic.Model, accessory.context.model || 'Unknown')
 			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
 
-		this.service = this.accessory.getService(this.platform.Service.Switch) || this.accessory.addService(this.platform.Service.Switch)
+		this.service = this.accessory.getService(this.platform.Service.Fan) || this.accessory.addService(this.platform.Service.Fan)
 		this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName)
 
-		// https://developers.homebridge.io/#/service/Switch
+		// https://developers.homebridge.io/#/service/Fan
 
 		this.service.getCharacteristic(this.platform.Characteristic.On)
 			.onSet(this.setOn.bind(this))
@@ -38,7 +38,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setOn(value: CharacteristicValue) {
 		const on = value as boolean
-		this.platform.log.debug(`Set relay ${this.accessory.displayName} (${this.accessory.context.address}) to ${on ? 'on' : 'off'}`)
+		this.platform.log.debug(`Set fan ${this.accessory.displayName} (${this.accessory.context.address}) to ${on ? 'on' : 'off'}`)
 
 		this.requestOn = !!on
 
@@ -66,7 +66,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 		const on = arcLevel > 0
 
 		if (on !== this.knownOn) {
-			this.platform.log.debug(`Controller updated relay ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
+			this.platform.log.debug(`Controller updated fan ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
 			this.knownOn = on
 			this.service.updateCharacteristic(this.platform.Characteristic.On, on)
 		}

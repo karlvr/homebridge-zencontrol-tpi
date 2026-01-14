@@ -25,6 +25,14 @@
 					"type": "string"
 				}
 			},
+			"fans": {
+				"type": "array",
+				"title": "Fans",
+				"description": "The names of the relays on your controllers that should be represented as fans.",
+				"items": {
+					"type": "string"
+				}
+			},
 			"relays": {
 				"type": "array",
 				"title": "Switches",

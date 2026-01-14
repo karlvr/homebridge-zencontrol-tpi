@@ -10,6 +10,7 @@ export interface MyPluginConfig {
 	}[]
 	blinds?: string[]
 	windows?: string[]
+	fans?: string[]
 	relays?: string[]
 	co2AbnormalLevel?: number
 	debug?: boolean
