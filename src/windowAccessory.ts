@@ -9,6 +9,10 @@ const WINDOW_CLOSED = 0
 const WINDOW_OPENING = 2
 const WINDOW_CLOSING = 1
 
+interface WindowOptions {
+	controlSystemVariableAddress: string
+}
+
 /**
  * Handle windows represented by a control system variable and a position system variable.
  */
@@ -25,7 +29,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 	constructor(
 		private readonly platform: ZencontrolTPIPlatform,
 		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
-		public readonly controlSystemVariableAddress: string,
+		private readonly options: WindowOptions,
 	) {
 		this.accessory.getService(this.platform.Service.AccessoryInformation)!
 			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')
@@ -74,13 +78,13 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 				this.positionState = this.platform.Characteristic.PositionState.DECREASING
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 
-				await this.platform.setSystemVariable(this.controlSystemVariableAddress, WINDOW_CLOSING)
+				await this.platform.setSystemVariable(this.options.controlSystemVariableAddress, WINDOW_CLOSING)
 			} else {
 				this.platform.log.debug(`Updating window position state to increasing: ${this.accessory.displayName}`)
 				this.positionState = this.platform.Characteristic.PositionState.INCREASING
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 
-				await this.platform.setSystemVariable(this.controlSystemVariableAddress, WINDOW_OPENING)
+				await this.platform.setSystemVariable(this.options.controlSystemVariableAddress, WINDOW_OPENING)
 			}
 
 			this.positionStateTimeout = setTimeout(() => {
@@ -136,7 +140,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 	}
 
 	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
-		if (systemVariableAddress === this.controlSystemVariableAddress) {
+		if (systemVariableAddress === this.options.controlSystemVariableAddress) {
 			if (value !== null) {
 				this.receiveControl(value)
 			}

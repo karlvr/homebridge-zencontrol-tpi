@@ -4,7 +4,7 @@ import type { ZencontrolTPIPlatform } from './platform.js'
 import { arcLevelToPercentage, percentageToArcLevel, ZenColour } from 'zencontrol-tpi-node'
 import { ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 
-export interface ZencontrolLightOptions {
+interface ZencontrolLightOptions {
 	color?: boolean
 }
 

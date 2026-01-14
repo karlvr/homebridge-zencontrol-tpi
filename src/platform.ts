@@ -1,8 +1,8 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge'
 
-import { ZencontrolLightOptions, ZencontrolLightPlatformAccessory } from './lightAccessory.js'
+import { ZencontrolLightPlatformAccessory } from './lightAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
-import { isZencontrolSystemVariableAccessory, MyPluginConfig, ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { isZencontrolSystemVariableAccessory, MyPluginConfig, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
 import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
@@ -12,11 +12,16 @@ import { ZencontrolWindowPlatformAccessory } from './windowAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
 import { ZencontrolCO2PlatformAccessory } from './co2Accessory.js'
 
-interface ZencontrolTPIPlatformAccessoryOptions {
+interface ZencontrolTPIPlatformAccessoryConfiguration<T extends ZencontrolTPIPlatformAccessory, O> {
 	address: string
 	label: string
 	model: string
 	serial: string
+
+	options: O
+
+	accessoryTypeName: string
+	AccessoryClass: new (platform: ZencontrolTPIPlatform, accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, options: O) => T
 }
 
 /**
@@ -125,7 +130,15 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							return
 						}
 
-						const acc = this.addLightAccessory({ address: addressToString(group), label, model: 'DALI Group', serial: `${controller.id}.${group.group()}` })
+						const acc = this.addAccessory({
+							address: addressToString(group),
+							label,
+							model: 'DALI Group',
+							serial: `${controller.id}.${group.group()}`,
+							accessoryTypeName: 'light',
+							AccessoryClass: ZencontrolLightPlatformAccessory,
+							options: {},
+						})
 						const groupStatus = await this.zc.queryGroupByNumber(group)
 						if (groupStatus) {
 							acc.receiveArcLevel(groupStatus.level)
@@ -155,7 +168,17 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								}
 
 								const color = !!types.find(isColorControlGear)
-								const acc = this.addLightAccessory({ address: addressToString(ecg), label, model: 'ECG', serial: `${controller.id}.${ecg.ecg()}`, color })
+								const acc = this.addAccessory({
+									address: addressToString(ecg),
+									label,
+									model: 'ECG',
+									serial: `${controller.id}.${ecg.ecg()}`,
+									accessoryTypeName: 'light',
+									AccessoryClass: ZencontrolLightPlatformAccessory,
+									options: {
+										color,
+									},
+								})
 								const level = await this.zc.daliQueryLevel(ecg)
 								if (level !== null) {
 									acc.receiveArcLevel(level)
@@ -167,22 +190,28 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 								}
 
 								if ((this.config.blinds ?? []).indexOf(label) !== -1) {
-									const acc = this.addBlindAccessory({
+									const acc = this.addAccessory({
 										address: addressToString(ecg),
 										label,
 										model: 'Relay',
 										serial: `${controller.id}.${ecg.ecg()}`,
+										accessoryTypeName: 'blind',
+										AccessoryClass: ZencontrolBlindPlatformAccessory,
+										options: {},
 									})
 									const level = await this.zc.daliQueryLevel(ecg)
 									if (level !== null) {
 										acc.receiveArcLevel(level)
 									}
 								} else if ((this.config.relays ?? []).indexOf(label) !== -1) {
-									const acc = this.addRelayAccessory({
+									const acc = this.addAccessory({
 										address: addressToString(ecg),
 										label,
 										model: 'Relay',
 										serial: `${controller.id}.${ecg.ecg()}`,
+										accessoryTypeName: 'relay',
+										AccessoryClass: ZencontrolRelayPlatformAccessory,
+										options: {},
 									})
 									const level = await this.zc.daliQueryLevel(ecg)
 									if (level !== null) {
@@ -210,51 +239,68 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 					if ((this.config.windows ?? []).indexOf(label) !== -1) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addWindowAccessory({
+						const acc = this.addAccessory({
 							address,
 							label,
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
+							accessoryTypeName: 'window',
+							AccessoryClass: ZencontrolWindowPlatformAccessory,
+							options: {
+								controlSystemVariableAddress: address,
+							},
 						})
 						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' temperature')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addTemperatureAccessory({
+						const acc = this.addAccessory({
 							address,
 							label: label.substring(0, label.length - ' temperature'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
+							accessoryTypeName: 'temperature',
+							AccessoryClass: ZencontrolTemperaturePlatformAccessory,
+							options: {},
 						})
 						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' humidity')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addHumidityAccessory({
+						const acc = this.addAccessory({
 							address,
 							label: label.substring(0, label.length - ' humidity'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
+							accessoryTypeName: 'humidity',
+							AccessoryClass: ZencontrolHumidityPlatformAccessory,
+							options: {},
 						})
 						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' lux')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addLuxAccessory({
+						const acc = this.addAccessory({
 							address,
 							label: label.substring(0, label.length - ' lux'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
+							accessoryTypeName: 'lux',
+							AccessoryClass: ZencontrolLuxPlatformAccessory,
+							options: {},
 						})
 						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' co2')) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
-						const acc = this.addCO2Accessory({
+						const acc = this.addAccessory({
 							address,
 							label: label.substring(0, label.length - ' co2'.length),
 							model: 'System Variable',
 							serial: `SV ${controller.id}.${variable}`,
+							accessoryTypeName: 'CO2',
+							AccessoryClass: ZencontrolCO2PlatformAccessory,
+							options: {},
 						})
 						acc.receiveSystemVariableChange(address, value)
 					} else if (label.toLocaleLowerCase().endsWith(' position')) {
@@ -322,234 +368,33 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.log.info('Device discovery complete')
 	}
 
-	private addLightAccessory({ address, label, model, serial, ...options }: ZencontrolTPIPlatformAccessoryOptions & ZencontrolLightOptions): ZencontrolLightPlatformAccessory {
-		// generate a unique id for the accessory this should be generated from
-		// something globally unique, but constant, for example, the device serial
-		// number or MAC address
-		const uuid = this.api.hap.uuid.generate(`light @ ${address}`)
-
-		// see if an accessory with the same uuid has already been registered and restored from
-		// the cached devices we stored in the `configureAccessory` method above
+	private addAccessory<O, T extends ZencontrolTPIPlatformAccessory>(config: ZencontrolTPIPlatformAccessoryConfiguration<T, O>): T {
+		const uuid = this.api.hap.uuid.generate(`${config.accessoryTypeName.toLocaleLowerCase()} @ ${config.address}`)
 		const existingAccessory = this.accessories.get(uuid)
 
-		let acc: ZencontrolLightPlatformAccessory
+		let acc: T
 		if (existingAccessory) {
-			// the accessory already exists
-			this.log.debug('Restoring existing light accessory from cache:', existingAccessory.displayName)
+			this.log.debug(`Restoring existing ${config.accessoryTypeName} accessory from cache:`, existingAccessory.displayName)
 
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
+			this.updateAccessory(existingAccessory, config)
 
-			// create the accessory handler for the restored accessory
-			// this is imported from `platformAccessory.ts`
-			acc = new ZencontrolLightPlatformAccessory(this, existingAccessory, options)
-
-			// it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-			// remove platform accessories when no longer present
-			// this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-			// this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+			acc = new config.AccessoryClass(this, existingAccessory, config.options)
 		} else {
-			// the accessory does not yet exist, so we need to create it
-			this.log.info(`Adding new ${model} light accessory:`, label)
+			this.log.info(`Adding new ${config.accessoryTypeName} accessory:`, config.label)
 
-			// create a new accessory
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
+			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(config.label, uuid)
+			this.setupAccessory(accessory, config)
 
-			// create the accessory handler for the newly create accessory
-			// this is imported from `platformAccessory.ts`
-			acc = new ZencontrolLightPlatformAccessory(this, accessory, options)
+			acc = new config.AccessoryClass(this, accessory, config.options)
 		}
 
-		this.accessoriesByAddress.set(address, acc)
-
-		// push into discoveredCacheUUIDs
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-
-	private addRelayAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolRelayPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`relay @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolRelayPlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing relay accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolRelayPlatformAccessory(this, existingAccessory)
-		} else {
-			this.log.info('Adding new relay accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolRelayPlatformAccessory(this, accessory)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
+		this.accessoriesByAddress.set(config.address, acc)
 
 		this.discoveredCacheUUIDs.push(uuid)
 		return acc
 	}
 
-	private addBlindAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolBlindPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`blind @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolBlindPlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing blind accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolBlindPlatformAccessory(this, existingAccessory)
-		} else {
-			this.log.info('Adding new blind accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolBlindPlatformAccessory(this, accessory)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
-
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-
-	private addWindowAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolWindowPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`window @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolWindowPlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing window accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolWindowPlatformAccessory(this, existingAccessory, address)
-		} else {
-			this.log.info('Adding new window accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolWindowPlatformAccessory(this, accessory, address)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
-
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-
-	private addTemperatureAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolTemperaturePlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`temperature @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolTemperaturePlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing temperature accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolTemperaturePlatformAccessory(this, existingAccessory)
-		} else {
-			this.log.info('Adding new temperature accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolTemperaturePlatformAccessory(this, accessory)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
-
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-	
-	private addHumidityAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolHumidityPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`humidity @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolHumidityPlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing humidity accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolHumidityPlatformAccessory(this, existingAccessory)
-		} else {
-			this.log.info('Adding new humidity accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolHumidityPlatformAccessory(this, accessory)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
-
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-	
-	private addLuxAccessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolLuxPlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`lux @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolLuxPlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing lux accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolLuxPlatformAccessory(this, existingAccessory)
-		} else {
-			this.log.info('Adding new lux accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolLuxPlatformAccessory(this, accessory)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
-
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-	
-	private addCO2Accessory({ address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): ZencontrolCO2PlatformAccessory {
-		const uuid = this.api.hap.uuid.generate(`co2 @ ${address}`)
-		const existingAccessory = this.accessories.get(uuid)
-
-		let acc: ZencontrolCO2PlatformAccessory
-		if (existingAccessory) {
-			this.log.debug('Restoring existing CO2 accessory from cache:', existingAccessory.displayName)
-
-			this.updateAccessory(existingAccessory, { address, label, model, serial })
-
-			acc = new ZencontrolCO2PlatformAccessory(this, existingAccessory)
-		} else {
-			this.log.info('Adding new CO2 accessory:', label)
-
-			const accessory = new this.api.platformAccessory<ZencontrolTPIPlatformAccessoryContext>(label, uuid)
-			this.setupAccessory(accessory, { address, label, model, serial })
-
-			acc = new ZencontrolCO2PlatformAccessory(this, accessory)
-		}
-
-		this.accessoriesByAddress.set(address, acc)
-
-		this.discoveredCacheUUIDs.push(uuid)
-		return acc
-	}
-
-	private setupAccessory(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): void {
+	private setupAccessory<O, T extends ZencontrolTPIPlatformAccessory>(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryConfiguration<T, O>): void {
 		accessory.context.address = address
 		accessory.context.model = model
 		accessory.context.serial = serial
@@ -561,7 +406,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.accessoryNeedsRegister.push(accessory)
 	}
 
-	private updateAccessory(existingAccessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryOptions): boolean {
+	private updateAccessory<O, T extends ZencontrolTPIPlatformAccessory>(existingAccessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryConfiguration<T, O>): boolean {
 		const currentDisplayName = existingAccessory.displayName
 		if (currentDisplayName !== label) {
 			this.log.info(`Updating existing ${model} accessory display name:`, label, `(from ${currentDisplayName})`)
