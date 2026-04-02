@@ -190,7 +190,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									return
 								}
 
-								if ((this.config.blinds ?? []).indexOf(label) !== -1) {
+								if ((this.config.blinds ?? []).includes(label)) {
 									const acc = this.addAccessory({
 										address: addressToString(ecg),
 										label,
@@ -204,7 +204,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									if (level !== null) {
 										acc.receiveArcLevel(level)
 									}
-								} else if ((this.config.fans ?? []).indexOf(label) !== -1) {
+								} else if ((this.config.fans ?? []).includes(label)) {
 									const acc = this.addAccessory({
 										address: addressToString(ecg),
 										label,
@@ -218,7 +218,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 									if (level !== null) {
 										acc.receiveArcLevel(level)
 									}
-								} else if ((this.config.relays ?? []).indexOf(label) !== -1) {
+								} else if ((this.config.relays ?? []).includes(label)) {
 									const acc = this.addAccessory({
 										address: addressToString(ecg),
 										label,
@@ -251,7 +251,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 					const address = systemVariableToAddressString(controller, variable)
 
-					if ((this.config.windows ?? []).indexOf(label) !== -1) {
+					if ((this.config.windows ?? []).includes(label)) {
 						const value = await this.zc.querySystemVariable(controller, variable)
 
 						const acc = this.addAccessory({
