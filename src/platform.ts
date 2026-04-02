@@ -36,7 +36,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 	// this is used to track restored cached accessories
 	public readonly accessories: Map<string, PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>> = new Map()
-	public readonly discoveredCacheUUIDs: string[] = []
+	public readonly discoveredCacheUUIDs = new Set<string>()
 
 	private zc: ZenProtocol
 	private accessoriesByAddress = new Map<string, ZencontrolTPIPlatformAccessory>()
@@ -364,7 +364,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		// for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
 		// from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
 		for (const [uuid, accessory] of this.accessories) {
-			if (!this.discoveredCacheUUIDs.includes(uuid)) {
+			if (!this.discoveredCacheUUIDs.has(uuid)) {
 				this.log.info('Removing existing accessory from cache:', accessory.displayName)
 				this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
 			}
@@ -407,7 +407,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		this.accessoriesByAddress.set(config.address, acc)
 
-		this.discoveredCacheUUIDs.push(uuid)
+		this.discoveredCacheUUIDs.add(uuid)
 		return acc
 	}
 
