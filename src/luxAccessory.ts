@@ -46,7 +46,7 @@ export class ZencontrolLuxPlatformAccessory implements ZencontrolTPIPlatformAcce
 	}
 
 	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
-		this.receiveLux(value)
+		await this.receiveLux(value)
 	}
 
 }

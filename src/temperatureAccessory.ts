@@ -51,7 +51,7 @@ export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlat
 	}
 
 	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
-		this.receiveTemperature(value)
+		await this.receiveTemperature(value)
 	}
 
 }

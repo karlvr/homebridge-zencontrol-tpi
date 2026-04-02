@@ -142,11 +142,11 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
 		if (systemVariableAddress === this.options.controlSystemVariableAddress) {
 			if (value !== null) {
-				this.receiveControl(value)
+				await this.receiveControl(value)
 			}
 		} else if (systemVariableAddress === this.positionSystemVariableAddress) {
 			if (value !== null) {
-				this.receivePosition(value)
+				await this.receivePosition(value)
 			}
 		} else {
 			this.platform.log.warn(`Ignoring unknown system variable change in blind "${this.displayName}: ${systemVariableAddress}`)
