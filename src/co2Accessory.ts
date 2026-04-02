@@ -50,6 +50,12 @@ export class ZencontrolCO2PlatformAccessory implements ZencontrolTPIPlatformAcce
 		this.platform.log(`Received CO2 for ${this.displayName}: ${co2}`)
 
 		this.service.updateCharacteristic(this.platform.Characteristic.CarbonDioxideLevel, co2)
+
+		if (co2 !== null && this.platform.config.co2AbnormalLevel && co2 >= this.platform.config.co2AbnormalLevel) {
+			this.service.updateCharacteristic(this.platform.Characteristic.CarbonDioxideDetected, this.platform.Characteristic.CarbonDioxideDetected.CO2_LEVELS_ABNORMAL)
+		} else {
+			this.service.updateCharacteristic(this.platform.Characteristic.CarbonDioxideDetected, this.platform.Characteristic.CarbonDioxideDetected.CO2_LEVELS_NORMAL)
+		}
 	}
 
 	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
