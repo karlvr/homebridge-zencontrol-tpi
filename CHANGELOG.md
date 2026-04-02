@@ -1,5 +1,25 @@
 # homebridge-zencontrol-tpi
 
+## 1.1.1
+
+### Patch Changes
+
+- 7e31130: Update homebridge-lib and dev dependencies
+- 5c3928c: warn when temperature value requires scaling
+- a431d43: consolidate sensor accessories into a base class
+- 911062e: use Set for discoveredCacheUUIDs
+- ca044a7: only warn once per accessory for temperature scaling
+- a431d43: restore sensor type in log messages
+- 0ef1c8d: extract shared AccessoryInformation setup
+- 73f4528: await async calls in system variable handlers
+- 0d68ed6: use includes instead of indexOf for config lookups
+- a431d43: restore logging of received sensor values
+- a2227cb: push CO2 detected state on value change
+- 427c10f: handle fan accessories in level change callback
+- a0be023: extract discovery methods from discoverDevices
+- 73f4528: await receivePosition in window accessory
+- 69435c1: Update zencontrol-tpi-node for various bug fixes
+
 ## 1.1.0
 
 ### Minor Changes
