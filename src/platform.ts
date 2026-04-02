@@ -471,7 +471,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.zc.levelChangeCallback = (address, arcLevel) => {
 			const accessoryId = addressToString(address)
 			const acc = this.accessoriesByAddress.get(accessoryId)
-			if (acc instanceof ZencontrolLightPlatformAccessory || acc instanceof ZencontrolRelayPlatformAccessory || acc instanceof ZencontrolBlindPlatformAccessory) {
+			if (acc instanceof ZencontrolLightPlatformAccessory || acc instanceof ZencontrolRelayPlatformAccessory || acc instanceof ZencontrolBlindPlatformAccessory || acc instanceof ZencontrolFanPlatformAccessory) {
 				acc.receiveArcLevel(arcLevel).catch((reason) => {
 					this.log.warn(`Failed to update accessory "${acc.displayName}" brightness: ${reason}`)
 				})
