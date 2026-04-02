@@ -12,6 +12,7 @@ import { ZencontrolBlindPlatformAccessory } from './blindAccessory.js'
 import { ZencontrolWindowPlatformAccessory } from './windowAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
 import { ZencontrolCO2PlatformAccessory } from './co2Accessory.js'
+import { ZencontrolSensorAccessory } from './sensorAccessory.js'
 
 interface ZencontrolTPIPlatformAccessoryConfiguration<T extends ZencontrolTPIPlatformAccessory, O> {
 	address: string
@@ -108,11 +109,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		this.accessories.set(accessory.UUID, accessory)
 	}
 
-	/**
-	 * This is an example method showing how to register discovered accessories.
-	 * Accessories must only be registered once, previously created accessories
-	 * must not be registered again to prevent "duplicate UUID" errors.
-	 */
 	async discoverDevices() {
 		this.log.info('Discovering groups and devices')
 		this.accessoriesByAddress.clear()
@@ -121,211 +117,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		const positionVariables: { label: string, address: string, value: number | null }[] = []
 
 		for (const controller of this.zc.controllers) {
-			/* Discover groups */
-			promises.push(this.zc.queryGroupNumbers(controller).then((groups) => {
-				const promises: Promise<unknown>[] = []
-				for (const group of groups) {
-					promises.push(this.zc.queryGroupLabel(group).then(async (label) => {
-						if (label === null) {
-							/* We treat these as not existing */
-							return
-						}
-
-						const acc = this.addAccessory({
-							address: addressToString(group),
-							label,
-							model: 'DALI Group',
-							serial: `${controller.id}.${group.group()}`,
-							accessoryTypeName: 'light',
-							AccessoryClass: ZencontrolLightPlatformAccessory,
-							options: {},
-						})
-						const groupStatus = await this.zc.queryGroupByNumber(group)
-						if (groupStatus) {
-							acc.receiveArcLevel(groupStatus.level)
-						}
-					}))
-				}
-
-				return Promise.all(promises)
-			}))
-
-			/* Discover ECGs that aren't in groups */
-			promises.push(this.zc.queryControlGearDaliAddresses(controller).then((ecgs) => {
-				const promises: Promise<unknown>[] = []
-				for (const ecg of ecgs) {
-					promises.push(this.zc.queryGroupMembershipByAddress(ecg).then(async groups => {
-						if (groups.length === 0) {
-							/* Found an ECG that's not part of a group */
-							const types = await this.zc.daliQueryCgType(ecg)
-							if (!types) {
-								return
-							}
-
-							if (types.find(isLightControlGear)) {
-								const label = await this.zc.queryDaliDeviceLabel(ecg)
-								if (!label) {
-									return
-								}
-
-								const color = !!types.find(isColorControlGear)
-								const acc = this.addAccessory({
-									address: addressToString(ecg),
-									label,
-									model: 'ECG',
-									serial: `${controller.id}.${ecg.ecg()}`,
-									accessoryTypeName: 'light',
-									AccessoryClass: ZencontrolLightPlatformAccessory,
-									options: {
-										color,
-									},
-								})
-								const level = await this.zc.daliQueryLevel(ecg)
-								if (level !== null) {
-									acc.receiveArcLevel(level)
-								}
-							} else if (types.find(isRelayControlGear)) {
-								const label = await this.zc.queryDaliDeviceLabel(ecg)
-								if (!label) {
-									return
-								}
-
-								if ((this.config.blinds ?? []).includes(label)) {
-									const acc = this.addAccessory({
-										address: addressToString(ecg),
-										label,
-										model: 'Relay',
-										serial: `${controller.id}.${ecg.ecg()}`,
-										accessoryTypeName: 'blind',
-										AccessoryClass: ZencontrolBlindPlatformAccessory,
-										options: {},
-									})
-									const level = await this.zc.daliQueryLevel(ecg)
-									if (level !== null) {
-										acc.receiveArcLevel(level)
-									}
-								} else if ((this.config.fans ?? []).includes(label)) {
-									const acc = this.addAccessory({
-										address: addressToString(ecg),
-										label,
-										model: 'Fan',
-										serial: `${controller.id}.${ecg.ecg()}`,
-										accessoryTypeName: 'fan',
-										AccessoryClass: ZencontrolFanPlatformAccessory,
-										options: {},
-									})
-									const level = await this.zc.daliQueryLevel(ecg)
-									if (level !== null) {
-										acc.receiveArcLevel(level)
-									}
-								} else if ((this.config.relays ?? []).includes(label)) {
-									const acc = this.addAccessory({
-										address: addressToString(ecg),
-										label,
-										model: 'Relay',
-										serial: `${controller.id}.${ecg.ecg()}`,
-										accessoryTypeName: 'relay',
-										AccessoryClass: ZencontrolRelayPlatformAccessory,
-										options: {},
-									})
-									const level = await this.zc.daliQueryLevel(ecg)
-									if (level !== null) {
-										acc.receiveArcLevel(level)
-									}
-								} else {
-									this.log.debug(`Ignoring relay as it is not listed in the config: ${label}`)
-									return
-								}
-							}
-						}
-					}))
-				}
-				return Promise.all(promises)
-			}))
-
-			for (let variable = 0; variable < ZenConst.MAX_SYSVAR; variable++) {
-				promises.push(this.zc.querySystemVariableName(controller, variable).then(async label => {
-					if (!label) {
-						return
-					}
-
-					const address = systemVariableToAddressString(controller, variable)
-
-					if ((this.config.windows ?? []).includes(label)) {
-						const value = await this.zc.querySystemVariable(controller, variable)
-
-						const acc = this.addAccessory({
-							address,
-							label,
-							model: 'System Variable',
-							serial: `SV ${controller.id}.${variable}`,
-							accessoryTypeName: 'window',
-							AccessoryClass: ZencontrolWindowPlatformAccessory,
-							options: {
-								controlSystemVariableAddress: address,
-							},
-						})
-						acc.receiveSystemVariableChange(address, value)
-					} else if (label.toLocaleLowerCase().endsWith(' temperature')) {
-						const value = await this.zc.querySystemVariable(controller, variable)
-
-						const acc = this.addAccessory({
-							address,
-							label: label.substring(0, label.length - ' temperature'.length),
-							model: 'System Variable',
-							serial: `SV ${controller.id}.${variable}`,
-							accessoryTypeName: 'temperature',
-							AccessoryClass: ZencontrolTemperaturePlatformAccessory,
-							options: {},
-						})
-						acc.receiveSystemVariableChange(address, value)
-					} else if (label.toLocaleLowerCase().endsWith(' humidity')) {
-						const value = await this.zc.querySystemVariable(controller, variable)
-
-						const acc = this.addAccessory({
-							address,
-							label: label.substring(0, label.length - ' humidity'.length),
-							model: 'System Variable',
-							serial: `SV ${controller.id}.${variable}`,
-							accessoryTypeName: 'humidity',
-							AccessoryClass: ZencontrolHumidityPlatformAccessory,
-							options: {},
-						})
-						acc.receiveSystemVariableChange(address, value)
-					} else if (label.toLocaleLowerCase().endsWith(' lux')) {
-						const value = await this.zc.querySystemVariable(controller, variable)
-
-						const acc = this.addAccessory({
-							address,
-							label: label.substring(0, label.length - ' lux'.length),
-							model: 'System Variable',
-							serial: `SV ${controller.id}.${variable}`,
-							accessoryTypeName: 'lux',
-							AccessoryClass: ZencontrolLuxPlatformAccessory,
-							options: {},
-						})
-						acc.receiveSystemVariableChange(address, value)
-					} else if (label.toLocaleLowerCase().endsWith(' co2')) {
-						const value = await this.zc.querySystemVariable(controller, variable)
-
-						const acc = this.addAccessory({
-							address,
-							label: label.substring(0, label.length - ' co2'.length),
-							model: 'System Variable',
-							serial: `SV ${controller.id}.${variable}`,
-							accessoryTypeName: 'CO2',
-							AccessoryClass: ZencontrolCO2PlatformAccessory,
-							options: {},
-						})
-						acc.receiveSystemVariableChange(address, value)
-					} else if (label.toLocaleLowerCase().endsWith(' position')) {
-						const value = await this.zc.querySystemVariable(controller, variable)
-						positionVariables.push({ label, address, value })
-					} else {
-						this.log.debug(`Ignoring unrecognised system variable: ${label}`)
-					}
-				}))
-			}
+			promises.push(this.discoverGroups(controller))
+			promises.push(this.discoverUngroupedECGs(controller))
+			this.discoverSystemVariables(controller, promises, positionVariables)
 		}
 
 		try {
@@ -337,7 +131,207 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			return
 		}
 
-		/* Position variables; we come back and handle the position variables now that we've created all of the accessories */
+		this.linkPositionVariables(positionVariables)
+
+		for (const [uuid, accessory] of this.accessories) {
+			if (!this.discoveredCacheUUIDs.has(uuid)) {
+				this.log.info('Removing existing accessory from cache:', accessory.displayName)
+				this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+			}
+		}
+
+		if (this.accessoryNeedsRegister.length) {
+			this.log.info(`Registering ${this.accessoryNeedsRegister.length} accessories`)
+			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryNeedsRegister)
+			this.accessoryNeedsRegister.splice(0, this.accessoryNeedsRegister.length)
+		}
+
+		if (this.accessoryNeedsUpdate.length) {
+			this.log.info(`Updating ${this.accessoryNeedsUpdate.length} accessories`)
+			this.api.updatePlatformAccessories(this.accessoryNeedsUpdate)
+			this.accessoryNeedsUpdate.splice(0, this.accessoryNeedsUpdate.length)
+		}
+
+		this.log.info('Device discovery complete')
+	}
+
+	private discoverGroups(controller: ZenController): Promise<unknown> {
+		return this.zc.queryGroupNumbers(controller).then((groups) => {
+			const promises: Promise<unknown>[] = []
+			for (const group of groups) {
+				promises.push(this.zc.queryGroupLabel(group).then(async (label) => {
+					if (label === null) {
+						return
+					}
+
+					const acc = this.addAccessory({
+						address: addressToString(group),
+						label,
+						model: 'DALI Group',
+						serial: `${controller.id}.${group.group()}`,
+						accessoryTypeName: 'light',
+						AccessoryClass: ZencontrolLightPlatformAccessory,
+						options: {},
+					})
+					const groupStatus = await this.zc.queryGroupByNumber(group)
+					if (groupStatus) {
+						acc.receiveArcLevel(groupStatus.level)
+					}
+				}))
+			}
+
+			return Promise.all(promises)
+		})
+	}
+
+	private discoverUngroupedECGs(controller: ZenController): Promise<unknown> {
+		return this.zc.queryControlGearDaliAddresses(controller).then((ecgs) => {
+			const promises: Promise<unknown>[] = []
+			for (const ecg of ecgs) {
+				promises.push(this.zc.queryGroupMembershipByAddress(ecg).then(async groups => {
+					if (groups.length === 0) {
+						await this.discoverECG(controller, ecg)
+					}
+				}))
+			}
+			return Promise.all(promises)
+		})
+	}
+
+	private async discoverECG(controller: ZenController, ecg: ZenAddress) {
+		const types = await this.zc.daliQueryCgType(ecg)
+		if (!types) {
+			return
+		}
+
+		if (types.find(isLightControlGear)) {
+			const label = await this.zc.queryDaliDeviceLabel(ecg)
+			if (!label) {
+				return
+			}
+
+			const color = !!types.find(isColorControlGear)
+			const acc = this.addAccessory({
+				address: addressToString(ecg),
+				label,
+				model: 'ECG',
+				serial: `${controller.id}.${ecg.ecg()}`,
+				accessoryTypeName: 'light',
+				AccessoryClass: ZencontrolLightPlatformAccessory,
+				options: {
+					color,
+				},
+			})
+			const level = await this.zc.daliQueryLevel(ecg)
+			if (level !== null) {
+				acc.receiveArcLevel(level)
+			}
+		} else if (types.find(isRelayControlGear)) {
+			await this.discoverRelayECG(controller, ecg)
+		}
+	}
+
+	private async discoverRelayECG(controller: ZenController, ecg: ZenAddress) {
+		const label = await this.zc.queryDaliDeviceLabel(ecg)
+		if (!label) {
+			return
+		}
+
+		let acc: { receiveArcLevel(level: number): void } | undefined
+		if ((this.config.blinds ?? []).includes(label)) {
+			acc = this.addAccessory({
+				address: addressToString(ecg), label, model: 'Relay',
+				serial: `${controller.id}.${ecg.ecg()}`,
+				accessoryTypeName: 'blind', AccessoryClass: ZencontrolBlindPlatformAccessory, options: {},
+			})
+		} else if ((this.config.fans ?? []).includes(label)) {
+			acc = this.addAccessory({
+				address: addressToString(ecg), label, model: 'Fan',
+				serial: `${controller.id}.${ecg.ecg()}`,
+				accessoryTypeName: 'fan', AccessoryClass: ZencontrolFanPlatformAccessory, options: {},
+			})
+		} else if ((this.config.relays ?? []).includes(label)) {
+			acc = this.addAccessory({
+				address: addressToString(ecg), label, model: 'Relay',
+				serial: `${controller.id}.${ecg.ecg()}`,
+				accessoryTypeName: 'relay', AccessoryClass: ZencontrolRelayPlatformAccessory, options: {},
+			})
+		} else {
+			this.log.debug(`Ignoring relay as it is not listed in the config: ${label}`)
+			return
+		}
+
+		const level = await this.zc.daliQueryLevel(ecg)
+		if (level !== null) {
+			acc.receiveArcLevel(level)
+		}
+	}
+
+	private static readonly SENSOR_SUFFIXES: { suffix: string, accessoryTypeName: string, AccessoryClass: ZencontrolTPIPlatformAccessoryConfiguration<ZencontrolSensorAccessory, Record<string, never>>['AccessoryClass'] }[] = [
+		{ suffix: ' temperature', accessoryTypeName: 'temperature', AccessoryClass: ZencontrolTemperaturePlatformAccessory },
+		{ suffix: ' humidity', accessoryTypeName: 'humidity', AccessoryClass: ZencontrolHumidityPlatformAccessory },
+		{ suffix: ' lux', accessoryTypeName: 'lux', AccessoryClass: ZencontrolLuxPlatformAccessory },
+		{ suffix: ' co2', accessoryTypeName: 'CO2', AccessoryClass: ZencontrolCO2PlatformAccessory },
+	]
+
+	private discoverSystemVariables(controller: ZenController, promises: Promise<unknown>[], positionVariables: { label: string, address: string, value: number | null }[]) {
+		for (let variable = 0; variable < ZenConst.MAX_SYSVAR; variable++) {
+			promises.push(this.zc.querySystemVariableName(controller, variable).then(async label => {
+				if (!label) {
+					return
+				}
+
+				const address = systemVariableToAddressString(controller, variable)
+
+				if ((this.config.windows ?? []).includes(label)) {
+					const value = await this.zc.querySystemVariable(controller, variable)
+
+					const acc = this.addAccessory({
+						address,
+						label,
+						model: 'System Variable',
+						serial: `SV ${controller.id}.${variable}`,
+						accessoryTypeName: 'window',
+						AccessoryClass: ZencontrolWindowPlatformAccessory,
+						options: {
+							controlSystemVariableAddress: address,
+						},
+					})
+					acc.receiveSystemVariableChange(address, value)
+					return
+				}
+
+				const lowerLabel = label.toLocaleLowerCase()
+
+				if (lowerLabel.endsWith(' position')) {
+					const value = await this.zc.querySystemVariable(controller, variable)
+					positionVariables.push({ label, address, value })
+					return
+				}
+
+				const sensorMatch = ZencontrolTPIPlatform.SENSOR_SUFFIXES.find(s => lowerLabel.endsWith(s.suffix))
+				if (sensorMatch) {
+					const value = await this.zc.querySystemVariable(controller, variable)
+
+					const acc = this.addAccessory({
+						address,
+						label: label.substring(0, label.length - sensorMatch.suffix.length),
+						model: 'System Variable',
+						serial: `SV ${controller.id}.${variable}`,
+						accessoryTypeName: sensorMatch.accessoryTypeName,
+						AccessoryClass: sensorMatch.AccessoryClass,
+						options: {},
+					})
+					acc.receiveSystemVariableChange(address, value)
+					return
+				}
+
+				this.log.debug(`Ignoring unrecognised system variable: ${label}`)
+			}))
+		}
+	}
+
+	private linkPositionVariables(positionVariables: { label: string, address: string, value: number | null }[]) {
 		for (const { label, address, value } of positionVariables) {
 			let foundAcc: ZencontrolBlindPlatformAccessory | ZencontrolWindowPlatformAccessory | undefined = undefined
 			for (const [_, acc] of this.accessoriesByAddress) {
@@ -359,30 +353,6 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				this.log.debug(`Ignoring position system variable as no matching accessory found: ${label}`)
 			}
 		}
-
-		// you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
-		// for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
-		// from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
-		for (const [uuid, accessory] of this.accessories) {
-			if (!this.discoveredCacheUUIDs.has(uuid)) {
-				this.log.info('Removing existing accessory from cache:', accessory.displayName)
-				this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-			}
-		}
-
-		if (this.accessoryNeedsRegister.length) {
-			this.log.info(`Registering ${this.accessoryNeedsRegister.length} accessories`)
-			this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryNeedsRegister)
-			this.accessoryNeedsRegister.splice(0, this.accessoryNeedsRegister.length)
-		}
-
-		if (this.accessoryNeedsUpdate.length) {
-			this.log.info(`Updating ${this.accessoryNeedsUpdate.length} accessories`)
-			this.api.updatePlatformAccessories(this.accessoryNeedsUpdate)
-			this.accessoryNeedsUpdate.splice(0, this.accessoryNeedsUpdate.length)
-		}
-
-		this.log.info('Device discovery complete')
 	}
 
 	private addAccessory<O, T extends ZencontrolTPIPlatformAccessory>(config: ZencontrolTPIPlatformAccessoryConfiguration<T, O>): T {
