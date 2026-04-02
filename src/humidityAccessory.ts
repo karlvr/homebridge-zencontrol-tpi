@@ -1,45 +1,16 @@
-import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
+import type { PlatformAccessory } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import type { ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { ZencontrolSensorAccessory } from './sensorAccessory.js'
 
-export class ZencontrolHumidityPlatformAccessory implements ZencontrolTPIPlatformAccessory, ZencontrolSystemVariableAccessory {
-	private service: Service
-
-	private knownHumidity: number | null = null
+export class ZencontrolHumidityPlatformAccessory extends ZencontrolSensorAccessory {
 
 	constructor(
-		private readonly platform: ZencontrolTPIPlatform,
-		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
+		platform: ZencontrolTPIPlatform,
+		accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 	) {
-		this.platform.setupAccessoryInformation(accessory)
-
-		this.service = this.accessory.getService(this.platform.Service.HumiditySensor) || this.accessory.addService(this.platform.Service.HumiditySensor)
-
-		this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName)
-
-		this.service.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
-			.onGet(this.getCurrentHumidity.bind(this))
-	}
-
-	get displayName() {
-		return this.accessory.displayName
-	}
-
-	async getCurrentHumidity(): Promise<CharacteristicValue | null> {
-		return this.knownHumidity
-	}
-
-	private async receiveHumidity(humidity: number | null) {
-		this.knownHumidity = humidity
-
-		this.platform.log(`Received humidity for ${this.displayName}: ${humidity}`)
-
-		this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity)
-	}
-
-	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
-		await this.receiveHumidity(value)
+		super(platform, accessory, platform.Service.HumiditySensor, platform.Characteristic.CurrentRelativeHumidity, 'humidity')
 	}
 
 }

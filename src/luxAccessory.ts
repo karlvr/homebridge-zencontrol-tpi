@@ -1,49 +1,21 @@
-import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
+import type { PlatformAccessory } from 'homebridge'
 
 import type { ZencontrolTPIPlatform } from './platform.js'
-import { ZencontrolSystemVariableAccessory, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import type { ZencontrolTPIPlatformAccessoryContext } from './types.js'
+import { ZencontrolSensorAccessory } from './sensorAccessory.js'
 
-export class ZencontrolLuxPlatformAccessory implements ZencontrolTPIPlatformAccessory, ZencontrolSystemVariableAccessory {
-	private service: Service
-
-	private knownLux: number | null = null
+export class ZencontrolLuxPlatformAccessory extends ZencontrolSensorAccessory {
 
 	constructor(
-		private readonly platform: ZencontrolTPIPlatform,
-		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
+		platform: ZencontrolTPIPlatform,
+		accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 	) {
-		this.platform.setupAccessoryInformation(accessory)
+		super(platform, accessory, platform.Service.LightSensor, platform.Characteristic.CurrentAmbientLightLevel, 'lux')
 
-		// https://developers.homebridge.io/#/service/LightSensor
-		this.service = this.accessory.getService(this.platform.Service.LightSensor) || this.accessory.addService(this.platform.Service.LightSensor)
-
-		this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName)
-
-		this.service.getCharacteristic(this.platform.Characteristic.CurrentAmbientLightLevel)
-			.onGet(this.getCurrentLightLevel.bind(this))
+		this.service.getCharacteristic(platform.Characteristic.CurrentAmbientLightLevel)
 			.setProps({
 				minValue: 0,
 			})
-	}
-
-	get displayName() {
-		return this.accessory.displayName
-	}
-
-	async getCurrentLightLevel(): Promise<CharacteristicValue | null> {
-		return this.knownLux
-	}
-
-	private async receiveLux(lux: number | null) {
-		this.knownLux = lux
-
-		this.platform.log(`Received lux for ${this.displayName}: ${lux}`)
-
-		this.service.updateCharacteristic(this.platform.Characteristic.CurrentAmbientLightLevel, lux)
-	}
-
-	async receiveSystemVariableChange(systemVariableAddress: string, value: number | null): Promise<void> {
-		await this.receiveLux(value)
 	}
 
 }
