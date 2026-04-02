@@ -7,6 +7,7 @@ export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlat
 	private service: Service
 
 	private knownTemperature: number | null = null
+	private hasWarnedScaling = false
 
 	constructor(
 		private readonly platform: ZencontrolTPIPlatform,
@@ -40,7 +41,10 @@ export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlat
 			while (temperature > 100) {
 				temperature /= 10
 			}
-			this.platform.log.warn(`Received out-of-range temperature for ${this.displayName}: ${original}, scaled to ${temperature}`)
+			if (!this.hasWarnedScaling) {
+				this.platform.log.warn(`Received out-of-range temperature for ${this.displayName}: ${original}, scaled to ${temperature}`)
+				this.hasWarnedScaling = true
+			}
 		}
 
 		this.knownTemperature = temperature
