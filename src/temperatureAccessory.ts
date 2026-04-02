@@ -35,10 +35,12 @@ export class ZencontrolTemperaturePlatformAccessory implements ZencontrolTPIPlat
 
 	private async receiveTemperature(temperature: number | null) {
 		/* We are receiving notifications that have magnitude 0 but are 10 times too big */
-		if (temperature !== null) {
+		if (temperature !== null && temperature > 100) {
+			const original = temperature
 			while (temperature > 100) {
 				temperature /= 10
 			}
+			this.platform.log.warn(`Received out-of-range temperature for ${this.displayName}: ${original}, scaled to ${temperature}`)
 		}
 
 		this.knownTemperature = temperature
