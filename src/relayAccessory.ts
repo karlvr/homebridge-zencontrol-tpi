@@ -13,10 +13,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 		private readonly platform: ZencontrolTPIPlatform,
 		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 	) {
-		this.accessory.getService(this.platform.Service.AccessoryInformation)!
-			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')
-			.setCharacteristic(this.platform.Characteristic.Model, accessory.context.model || 'Unknown')
-			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
+		this.platform.setupAccessoryInformation(accessory)
 
 		this.service = this.accessory.getService(this.platform.Service.Switch) || this.accessory.addService(this.platform.Service.Switch)
 		this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName)

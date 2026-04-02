@@ -48,11 +48,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 		private readonly options: ZencontrolLightOptions = {},
 	) {
-		// set accessory information
-		this.accessory.getService(this.platform.Service.AccessoryInformation)!
-			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')
-			.setCharacteristic(this.platform.Characteristic.Model, accessory.context.model || 'Unknown')
-			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
+		this.platform.setupAccessoryInformation(accessory)
 
 		// get the LightBulb service if it exists, otherwise create a new LightBulb service
 		// you can create multiple services for each accessory

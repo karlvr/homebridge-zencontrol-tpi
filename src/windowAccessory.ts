@@ -31,10 +31,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 		private readonly options: WindowOptions,
 	) {
-		this.accessory.getService(this.platform.Service.AccessoryInformation)!
-			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')
-			.setCharacteristic(this.platform.Characteristic.Model, accessory.context.model || 'Unknown')
-			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
+		this.platform.setupAccessoryInformation(accessory)
 
 		this.service = this.accessory.getService(this.platform.Service.Window) || this.accessory.addService(this.platform.Service.Window)
 		this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName)

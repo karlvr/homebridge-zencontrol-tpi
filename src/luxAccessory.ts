@@ -12,10 +12,7 @@ export class ZencontrolLuxPlatformAccessory implements ZencontrolTPIPlatformAcce
 		private readonly platform: ZencontrolTPIPlatform,
 		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 	) {
-		this.accessory.getService(this.platform.Service.AccessoryInformation)!
-			.setCharacteristic(this.platform.Characteristic.Manufacturer, 'Zencontrol')
-			.setCharacteristic(this.platform.Characteristic.Model, accessory.context.model || 'Unknown')
-			.setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
+		this.platform.setupAccessoryInformation(accessory)
 
 		// https://developers.homebridge.io/#/service/LightSensor
 		this.service = this.accessory.getService(this.platform.Service.LightSensor) || this.accessory.addService(this.platform.Service.LightSensor)

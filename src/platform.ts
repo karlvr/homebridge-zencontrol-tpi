@@ -457,6 +457,13 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		return needsUpdate
 	}
 
+	setupAccessoryInformation(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>): void {
+		accessory.getService(this.Service.AccessoryInformation)!
+			.setCharacteristic(this.Characteristic.Manufacturer, 'Zencontrol')
+			.setCharacteristic(this.Characteristic.Model, accessory.context.model || 'Unknown')
+			.setCharacteristic(this.Characteristic.SerialNumber, accessory.context.serial || 'Unknown')
+	}
+
 	private async activateLiveEvents() {
 		this.zc.groupLevelChangeCallback = (address, arcLevel) => {
 			const accessoryId = addressToString(address)
