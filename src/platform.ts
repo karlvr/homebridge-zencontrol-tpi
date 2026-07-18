@@ -603,53 +603,49 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	}
 
 	private parseAccessoryId(accessoryId: string): ZenAddress {
-		const parts = accessoryId.split(' ')
-		if (parts.length < 2) {
+		const [type, controllerIdString, targetString] = accessoryId.split(' ')
+		if (!type || !controllerIdString) {
 			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
 		}
-		
-		const controllerId = parseInt(parts[1])
+
+		const controllerId = parseInt(controllerIdString)
 		const controller = this.zc.controllers.find(c => c.id === controllerId)
 		if (!controller) {
 			throw new Error(`Unknown controller id: ${controllerId}`)
 		}
-			
-		if (parts[0] === 'BROADCAST') {
+
+		if (type === 'BROADCAST') {
 			return new ZenAddress(controller, ZenAddressType.BROADCAST, 0)
 		}
 
-		if (parts.length < 3) {
+		if (!targetString) {
 			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
 		}
 
-		if (parts[0] === 'GROUP') {
-			return new ZenAddress(controller, ZenAddressType.GROUP, parseInt(parts[2]))
-		} else if (parts[0] === 'ECG') {
-			return new ZenAddress(controller, ZenAddressType.ECG, parseInt(parts[2]))
-		} else if (parts[0] === 'ECD') {
-			return new ZenAddress(controller, ZenAddressType.ECD, parseInt(parts[2]))
+		if (type === 'GROUP') {
+			return new ZenAddress(controller, ZenAddressType.GROUP, parseInt(targetString))
+		} else if (type === 'ECG') {
+			return new ZenAddress(controller, ZenAddressType.ECG, parseInt(targetString))
+		} else if (type === 'ECD') {
+			return new ZenAddress(controller, ZenAddressType.ECD, parseInt(targetString))
 		} else {
 			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
 		}
 	}
 
 	private parseSystemVariableAddress(address: string): { controller: ZenController, variable: number } {
-		const parts = address.split(' ')
-		if (parts.length < 3) {
+		const [type, controllerIdString, variableString] = address.split(' ')
+		if (type !== 'SV' || !controllerIdString || !variableString) {
 			throw new Error(`Unrecognised system variable address: ${address}`)
 		}
 
-		const controllerId = parseInt(parts[1])
+		const controllerId = parseInt(controllerIdString)
 		const controller = this.zc.controllers.find(c => c.id === controllerId)
 		if (!controller) {
 			throw new Error(`Unknown controller id: ${controllerId}`)
 		}
-			
-		if (parts[0] === 'SV') {
-			return { controller, variable: Number(parts[2]) }
-		} else {
-			throw new Error(`Unrecognised system variable address: ${address}`)
-		}
+
+		return { controller, variable: Number(variableString) }
 	}
 
 }

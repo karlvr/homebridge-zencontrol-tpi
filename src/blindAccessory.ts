@@ -11,7 +11,7 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 
 	private currentPosition = BLIND_OPEN
 	private targetPosition?: number
-	private positionState = this.platform.Characteristic.PositionState.STOPPED
+	private positionState: number
 	private positionStateTimeout?: NodeJS.Timeout
 	/** The system variable for the blind position, if any. */
 	public positionSystemVariableAddress: string | undefined
@@ -20,6 +20,7 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 		private readonly platform: ZencontrolTPIPlatform,
 		private readonly accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>,
 	) {
+		this.positionState = this.platform.Characteristic.PositionState.STOPPED
 		this.platform.setupAccessoryInformation(accessory)
 
 		this.service = this.accessory.getService(this.platform.Service.WindowCovering) || this.accessory.addService(this.platform.Service.WindowCovering)
