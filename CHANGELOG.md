@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.2.1
+
+### Patch Changes
+
+- 09274d1: Fix packaging
+
 ## 1.2.0
 
 ### Minor Changes
