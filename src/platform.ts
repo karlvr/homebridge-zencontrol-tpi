@@ -519,10 +519,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		try {
 			const result = await this.zc.daliArcLevel(address, arcLevel)
 			if (!result) {
-				this.log.warn(`Failed to send arc level ${arcLevel} for ${address}`)
+				this.log.warn(`Failed to send arc level ${arcLevel} for ${accessoryId}`)
 			}
 		} catch (error) {
-			this.log.warn(`Failed to send arc level for ${address}:`, error)
+			this.log.warn(`Failed to send arc level for ${accessoryId}:`, error)
 		}
 	}
 
@@ -531,10 +531,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		try {
 			const result = await this.zc.daliOff(address)
 			if (!result) {
-				this.log.warn(`Failed to send off for ${address}`)
+				this.log.warn(`Failed to send off for ${accessoryId}`)
 			}
 		} catch (error) {
-			this.log.warn(`Failed to send off for ${address}:`, error)
+			this.log.warn(`Failed to send off for ${accessoryId}:`, error)
 		}
 	}
 
@@ -543,10 +543,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		try {
 			const result = await this.zc.daliRecallMin(address)
 			if (!result) {
-				this.log.warn(`Failed to send recall min for ${address}`)
+				this.log.warn(`Failed to send recall min for ${accessoryId}`)
 			}
 		} catch (error) {
-			this.log.warn(`Failed to send recall min for ${address}:`, error)
+			this.log.warn(`Failed to send recall min for ${accessoryId}:`, error)
 		}
 	}
 
@@ -555,10 +555,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		try {
 			const result = await this.zc.daliRecallMax(address)
 			if (!result) {
-				this.log.warn(`Failed to send recall max for ${address}`)
+				this.log.warn(`Failed to send recall max for ${accessoryId}`)
 			}
 		} catch (error) {
-			this.log.warn(`Failed to send recall max for ${address}:`, error)
+			this.log.warn(`Failed to send recall max for ${accessoryId}:`, error)
 		}
 	}
 
@@ -570,7 +570,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				this.log.warn(`Failed to set system variable ${controller.id}.${variable} to ${value}`)
 			}
 		} catch (error) {
-			this.log.warn(`Failed to set system variable ${controller.id}.${variable} to ${value}: ${error}`)
+			this.log.warn(`Failed to set system variable ${controller.id}.${variable} to ${value}:`, error)
 		}
 	}
 
@@ -584,7 +584,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		try {
 			await this.zc.daliColour(address, color, arcLevel)
 		} catch (error) {
-			this.log.warn(`Failed to send color for ${address}:`, error)
+			this.log.warn(`Failed to send color for ${accessoryId}:`, error)
 		}
 	}
 
@@ -596,7 +596,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			try {
 				await this.zc.daliEnableDAPCSequence(address)
 			} catch (error) {
-				this.log.warn(`Failed to enable DAPC sequence for ${address}:`, error)
+				this.log.warn(`Failed to enable DAPC sequence for ${accessoryId}:`, error)
 			}
 			this.lastSentDAPC.set(accessoryId, now)
 		}
@@ -661,7 +661,7 @@ function addressToString(address: ZenAddress) {
 	case ZenAddressType.ECD:
 		return `ECD ${address.controller.id} ${address.ecd()}`
 	}
-	throw new Error(`Unsupported ZenAddressType: ${address.type}`)
+	throw new Error(`Unsupported ZenAddressType: ${String(address.type)}`)
 }
 
 function systemVariableToAddressString(controller: ZenController, variable: number) {
