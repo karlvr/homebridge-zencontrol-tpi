@@ -132,7 +132,6 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setOn(value: CharacteristicValue) {
 		const on = value as boolean
-		this.platform.log.debug(`light: HomeKit: ${this.accessory.displayName}: ${on ? 'on' : 'off'}`)
 
 		if (on) {
 			/* Using the Home app requests in setting the brightness and then setting on, but using voice commands
@@ -178,7 +177,6 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setBrightness(value: CharacteristicValue) {
 		const brightness = value as number
-		this.platform.log.debug(`light: HomeKit: ${this.accessory.displayName} brightness: ${brightness}%`)
 
 		this.requestBrightness = brightness
 		this.requestBrightnessInstant = true
@@ -222,7 +220,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	}
 
 	private async updateBrightness() {
-		this.platform.log.info(`light: Sending to controller: ${this.displayName} brightness to ${this.requestBrightness}%`)
+		this.platform.log.debug(`light: HomeKit: ${this.displayName} brightness: ${this.requestBrightness}%`)
 		try {
 			await this.platform.sendArcLevel(this.accessory.context.address, percentageToArcLevel(this.requestBrightness!), this.requestBrightnessInstant)
 		} catch (error) {
@@ -234,7 +232,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		const brightness = this.requestBrightness ?? this.knownBrightness
 
 		const color = this.daliColor()
-		this.platform.log.info(`light: Sending to controller: ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`)
+		this.platform.log.debug(`light: HomeKit: ${this.displayName} color: ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`)
 		try {
 			await this.platform.sendColor(this.accessory.context.address, color, percentageToArcLevel(brightness), this.requestBrightnessInstant)
 		} catch (error) {
@@ -243,7 +241,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	}
 
 	private async updateOff() {
-		this.platform.log.info(`light: Sending to controller: ${this.displayName} to off`)
+		this.platform.log.debug(`light: HomeKit: ${this.displayName}: off`)
 		try {
 			await this.platform.sendArcLevel(this.accessory.context.address, 0, false)
 		} catch (error) {
