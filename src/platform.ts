@@ -114,6 +114,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	async discoverDevices() {
 		this.log.info('Discovering groups and devices')
 		this.accessoriesByAddress.clear()
+		this.discoveredCacheUUIDs.clear()
 
 		const promises: Promise<unknown>[] = []
 		const positionVariables: { label: string, address: string, value: number | null }[] = []
@@ -128,6 +129,12 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			await Promise.all(promises)
 		} catch (error) {
 			this.log.error('Failed to discover devices', error)
+
+			if (this.accessoryNeedsRegister.length) {
+				this.log.warn(`Discovery failed with ${this.accessoryNeedsRegister.length} newly discovered accessories pending; they will not be registered until the next restart`)
+			}
+			this.accessoryNeedsRegister.splice(0, this.accessoryNeedsRegister.length)
+			this.accessoryNeedsUpdate.splice(0, this.accessoryNeedsUpdate.length)
 
 			/* Return so we don't remove accessories, as then the user will have to set them all up again! Adding them to rooms etc */
 			return
