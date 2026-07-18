@@ -6,7 +6,7 @@
 	"main": "./dist/index.js",
 	"engines": {
 		"node": ">= 22",
-		"homebridge": "^1.8.0 || ^2.0.0-beta.0"
+		"homebridge": "^1.8.0 || ^2.0.0"
 	},
 	"scripts": {
 		"build": "tsc",
@@ -28,7 +28,7 @@
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^25.5.0",
 		"eslint": "^10.1.0",
-		"homebridge": "^1.11.4",
+		"homebridge": "^2.1.1",
 		"typescript": "^6.0.2",
 		"typescript-eslint": "^8.58.0"
 	},

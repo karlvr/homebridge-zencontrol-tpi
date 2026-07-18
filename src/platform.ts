@@ -104,11 +104,12 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	 * This function is invoked when homebridge restores cached accessories from disk at startup.
 	 * It should be used to set up event handlers for characteristics and update respective values.
 	 */
-	configureAccessory(accessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>) {
+	configureAccessory(accessory: PlatformAccessory) {
 		this.log.info('Loading accessory from cache:', accessory.displayName)
 
 		// add the restored accessory to the accessories cache, so we can track if it has already been registered
-		this.accessories.set(accessory.UUID, accessory)
+		/* The context is populated by discovery, which overwrites any stale or missing fields, so the cast is safe */
+		this.accessories.set(accessory.UUID, accessory as PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>)
 	}
 
 	async discoverDevices() {
