@@ -72,7 +72,7 @@ npm run build
 When I make changes I like to test them on my local Homebridge, which is on another device accessible via ssh:
 
 ```shell
-npm run build && rsync -a dist config.schema.json ubuntu@192.168.1.2:/var/lib/homebridge/node_modules/homebridge-zencontrol-tpi/
+npm run build && rsync -a --delete dist config.schema.json ubuntu@192.168.1.2:/var/lib/homebridge/node_modules/homebridge-zencontrol-tpi/ && rsync -a --delete node_modules/zencontrol-tpi-node ubuntu@192.168.1.2:/var/lib/homebridge/node_modules/homebridge-zencontrol-tpi/node_modules/
 ```
 
 Then I restart Homebridge to load the updated code.
