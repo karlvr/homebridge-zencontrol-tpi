@@ -19,7 +19,9 @@ export function addressToString(address: ZenAddress): string {
 	case ZenAddressType.ECG:
 		return `ECG ${address.controller.id} ${address.ecg()}`
 	case ZenAddressType.ECD:
-		return `ECD ${address.controller.id} ${address.ecd()}`
+		/* ecd() returns the DALI bus address form (target + 64); the string address uses the
+		   raw device index so that it round-trips through parseAddressString like ECG and GROUP */
+		return `ECD ${address.controller.id} ${address.target}`
 	}
 	throw new Error(`Unsupported ZenAddressType: ${String(address.type)}`)
 }
