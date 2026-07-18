@@ -553,6 +553,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	async sendColor(accessoryId: string, color: ZenColour, arcLevel: number, instant = true): Promise<void> {
 		const address = this.parseAccessoryId(accessoryId)
 
+		if (instant) {
+			await this.applyInstant(accessoryId, address)
+		}
+
 		try {
 			await this.zc.daliColour(address, color, arcLevel)
 		} catch (error) {
@@ -564,7 +568,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		const now = Date.now()
 		const lastSentDAPC = this.lastSentDAPC.get(accessoryId) || 0
 		if (now - lastSentDAPC > 200) {
-			/* We only need to stop fading once every 250ms */
+			/* We only need to stop fading once every 200ms */
 			try {
 				await this.zc.daliEnableDAPCSequence(address)
 			} catch (error) {
