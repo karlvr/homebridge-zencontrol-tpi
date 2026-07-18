@@ -13,6 +13,7 @@
 		"clean": "rm -rf dist",
 		"lint": "eslint .",
 		"release": "$npm_execpath run clean && $npm_execpath run build && $npm_execpath publish && $npm_execpath exec changeset tag && $npm_execpath install",
+		"ci:publish": "$npm_execpath run clean && $npm_execpath run build && $npm_execpath exec changeset publish",
 		"release:version": "$npm_execpath exec changeset version && $npm_execpath install",
 		"test": "vitest run",
 		"watch": "tsc --watch"
