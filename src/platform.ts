@@ -396,6 +396,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	}
 
 	private updateAccessory<O, T extends ZencontrolTPIPlatformAccessory>(existingAccessory: PlatformAccessory<ZencontrolTPIPlatformAccessoryContext>, { address, label, model, serial }: ZencontrolTPIPlatformAccessoryConfiguration<T, O>): boolean {
+		// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
+		// this.api.updatePlatformAccessories([existingAccessory])
+		let needsUpdate = false
+
 		const currentDisplayName = existingAccessory.displayName
 		if (currentDisplayName !== label) {
 			this.log.info(`Updating existing ${model} accessory display name:`, label, `(from ${currentDisplayName})`)
@@ -404,11 +408,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			const nameCharacteristic = existingAccessory.getService(this.Service.AccessoryInformation)!
 				.getCharacteristic(this.Characteristic.Name)
 			nameCharacteristic.updateValue(label)
+			needsUpdate = true
 		}
-
-		// if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-		// this.api.updatePlatformAccessories([existingAccessory])
-		let needsUpdate = false
 		if (existingAccessory.context.address !== address) {
 			existingAccessory.context.address = address
 			needsUpdate = true
@@ -423,7 +424,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 		}
 
 		if (needsUpdate) {
-			this.log.info(`Updating existing ${model} acccessory context: ${existingAccessory.displayName}`)
+			this.log.info(`Updating existing ${model} accessory context: ${existingAccessory.displayName}`)
 			this.accessoryNeedsUpdate.push(existingAccessory)
 		}
 		return needsUpdate
