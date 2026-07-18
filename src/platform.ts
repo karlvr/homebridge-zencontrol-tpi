@@ -3,7 +3,8 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 import { ZencontrolLightPlatformAccessory } from './lightAccessory.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
 import { isZencontrolSystemVariableAccessory, MyPluginConfig, ZencontrolTPIPlatformAccessory, ZencontrolTPIPlatformAccessoryContext } from './types.js'
-import { ZenController, ZenProtocol, ZenAddress, ZenAddressType, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
+import { ZenController, ZenProtocol, ZenAddress, ZenControlGearType, ZenColour, ZenConst } from 'zencontrol-tpi-node'
+import { addressToString, parseAddressString, parseSystemVariableAddressString, systemVariableToAddressString } from './address.js'
 import { ZencontrolTemperaturePlatformAccessory } from './temperatureAccessory.js'
 import { ZencontrolHumidityPlatformAccessory } from './humidityAccessory.js'
 import { ZencontrolRelayPlatformAccessory } from './relayAccessory.js'
@@ -603,69 +604,13 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 	}
 
 	private parseAccessoryId(accessoryId: string): ZenAddress {
-		const [type, controllerIdString, targetString] = accessoryId.split(' ')
-		if (!type || !controllerIdString) {
-			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
-		}
-
-		const controllerId = parseInt(controllerIdString)
-		const controller = this.zc.controllers.find(c => c.id === controllerId)
-		if (!controller) {
-			throw new Error(`Unknown controller id: ${controllerId}`)
-		}
-
-		if (type === 'BROADCAST') {
-			return new ZenAddress(controller, ZenAddressType.BROADCAST, 0)
-		}
-
-		if (!targetString) {
-			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
-		}
-
-		if (type === 'GROUP') {
-			return new ZenAddress(controller, ZenAddressType.GROUP, parseInt(targetString))
-		} else if (type === 'ECG') {
-			return new ZenAddress(controller, ZenAddressType.ECG, parseInt(targetString))
-		} else if (type === 'ECD') {
-			return new ZenAddress(controller, ZenAddressType.ECD, parseInt(targetString))
-		} else {
-			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
-		}
+		return parseAddressString(accessoryId, this.zc.controllers)
 	}
 
 	private parseSystemVariableAddress(address: string): { controller: ZenController, variable: number } {
-		const [type, controllerIdString, variableString] = address.split(' ')
-		if (type !== 'SV' || !controllerIdString || !variableString) {
-			throw new Error(`Unrecognised system variable address: ${address}`)
-		}
-
-		const controllerId = parseInt(controllerIdString)
-		const controller = this.zc.controllers.find(c => c.id === controllerId)
-		if (!controller) {
-			throw new Error(`Unknown controller id: ${controllerId}`)
-		}
-
-		return { controller, variable: Number(variableString) }
+		return parseSystemVariableAddressString(address, this.zc.controllers)
 	}
 
-}
-
-function addressToString(address: ZenAddress) {
-	switch (address.type) {
-	case ZenAddressType.BROADCAST:
-		return `BROADCAST ${address.controller.id}`		
-	case ZenAddressType.GROUP:
-		return `GROUP ${address.controller.id} ${address.group()}`
-	case ZenAddressType.ECG:
-		return `ECG ${address.controller.id} ${address.ecg()}`
-	case ZenAddressType.ECD:
-		return `ECD ${address.controller.id} ${address.ecd()}`
-	}
-	throw new Error(`Unsupported ZenAddressType: ${String(address.type)}`)
-}
-
-function systemVariableToAddressString(controller: ZenController, variable: number) {
-	return `SV ${controller.id} ${variable}`
 }
 
 function isLightControlGear(type: ZenControlGearType) {
