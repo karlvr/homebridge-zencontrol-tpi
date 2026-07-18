@@ -592,7 +592,13 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			
 		if (parts[0] === 'BROADCAST') {
 			return new ZenAddress(controller, ZenAddressType.BROADCAST, 0)
-		} else if (parts[0] === 'GROUP') {
+		}
+
+		if (parts.length < 3) {
+			throw new Error(`Unrecognised accessory ID: ${accessoryId}`)
+		}
+
+		if (parts[0] === 'GROUP') {
 			return new ZenAddress(controller, ZenAddressType.GROUP, parseInt(parts[2]))
 		} else if (parts[0] === 'ECG') {
 			return new ZenAddress(controller, ZenAddressType.ECG, parseInt(parts[2]))
@@ -605,8 +611,8 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 	private parseSystemVariableAddress(address: string): { controller: ZenController, variable: number } {
 		const parts = address.split(' ')
-		if (parts.length < 2) {
-			throw new Error(`Unrecognised system variable adddress: ${address}`)
+		if (parts.length < 3) {
+			throw new Error(`Unrecognised system variable address: ${address}`)
 		}
 
 		const controllerId = parseInt(parts[1])
