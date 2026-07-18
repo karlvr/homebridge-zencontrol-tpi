@@ -51,7 +51,7 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 
 	async setTargetPosition(value: CharacteristicValue) {
 		const targetPosition = (value as number) >= 50 ? BLIND_OPEN : BLIND_CLOSED
-		this.platform.log.debug(`Set blind ${this.accessory.displayName} (${this.accessory.context.address}) to ${targetPosition === BLIND_OPEN ? 'open' : 'closed'}`)
+		this.platform.log.debug(`blind: HomeKit: ${this.accessory.displayName} (${this.accessory.context.address}): ${targetPosition === BLIND_OPEN ? 'open' : 'closed'}`)
 
 		this.targetPosition = targetPosition
 		if (this.positionStateTimeout) {
@@ -61,12 +61,12 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 
 		try {
 			if (this.targetPosition === BLIND_CLOSED) {
-				this.platform.log.debug(`Updating blind position state to decreasing: ${this.accessory.displayName}`)
+				this.platform.log.debug(`blind: Updating position state to decreasing: ${this.accessory.displayName}`)
 				this.positionState = this.platform.Characteristic.PositionState.DECREASING
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 				await this.platform.sendRecallMax(this.accessory.context.address)
 			} else {
-				this.platform.log.debug(`Updating blind position state to increasing: ${this.accessory.displayName}`)
+				this.platform.log.debug(`blind: Updating position state to increasing: ${this.accessory.displayName}`)
 				this.positionState = this.platform.Characteristic.PositionState.INCREASING
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 				if (this.positionSystemVariableAddress) {
@@ -77,13 +77,13 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 			}
 
 			this.positionStateTimeout = setTimeout(() => {
-				this.platform.log.debug(`Updating blind position state to stopped: ${this.accessory.displayName}`)
+				this.platform.log.debug(`blind: Updating position state to stopped: ${this.accessory.displayName}`)
 				this.positionStateTimeout = undefined
 				this.positionState = this.platform.Characteristic.PositionState.STOPPED
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 			}, 5000)
 		} catch (error) {
-			this.platform.log.warn(`Failed to control blind ${this.accessory.displayName}`, error)
+			this.platform.log.warn(`blind: Failed to control ${this.accessory.displayName}`, error)
 			this.positionState = this.platform.Characteristic.PositionState.STOPPED
 			this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 		}
@@ -96,12 +96,12 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 	/* NB: blind controllers change back to 0 after a while, so they inaccurately report that they're open; this is why we prefer the system variable. */
 	async receiveArcLevel(arcLevel: number) {
 		if (this.positionSystemVariableAddress) {
-			this.platform.log.debug(`Controller updated blind ${this.accessory.displayName} to arc level ${arcLevel}; ignoring as there is a system variable configured`)
+			this.platform.log.debug(`blind: controller: ${this.accessory.displayName} arc level ${arcLevel}; ignoring as there is a system variable configured`)
 			return
 		}
 
 		const value = arcLevel > 0 ? BLIND_CLOSED : BLIND_OPEN
-		this.platform.log.debug(`Controller updated blind ${this.accessory.displayName} to ${value === BLIND_OPEN ? 'open' : 'closed'}`)
+		this.platform.log.debug(`blind: controller: ${this.accessory.displayName}: ${value === BLIND_OPEN ? 'open' : 'closed'}`)
 
 		if (value !== this.currentPosition) {
 			this.currentPosition = value
@@ -117,11 +117,11 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 
 	private async receivePosition(position: number) {
 		if (position < 0 || position > 100) {
-			this.platform.log.warn(`Ignoring invalid blind position for ${this.accessory.displayName}: ${position}`)
+			this.platform.log.warn(`blind: Ignoring invalid position from controller for ${this.accessory.displayName}: ${position}`)
 			return
 		}
 
-		this.platform.log.debug(`Controller updated blind ${this.accessory.displayName} to position ${position}`)
+		this.platform.log.debug(`blind: controller: ${this.accessory.displayName} position: ${position}`)
 		if (position !== this.currentPosition) {
 			this.currentPosition = position
 			this.service.updateCharacteristic(this.platform.Characteristic.CurrentPosition, position)
@@ -140,7 +140,7 @@ export class ZencontrolBlindPlatformAccessory implements ZencontrolTPIPlatformAc
 				await this.receivePosition(value)
 			}
 		} else {
-			this.platform.log.warn(`Ignoring unknown system variable change in blind "${this.displayName}: ${systemVariableAddress}`)
+			this.platform.log.warn(`blind: Ignoring unknown system variable change from controller for "${this.displayName}: ${systemVariableAddress}`)
 		}
 	}
 

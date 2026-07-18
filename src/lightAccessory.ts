@@ -132,7 +132,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setOn(value: CharacteristicValue) {
 		const on = value as boolean
-		this.platform.log.debug(`Received from HomeKit: ${this.accessory.displayName} to ${on ? 'on' : 'off'}`)
+		this.platform.log.debug(`light: HomeKit: ${this.accessory.displayName}: ${on ? 'on' : 'off'}`)
 
 		if (on) {
 			/* Using the Home app requests in setting the brightness and then setting on, but using voice commands
@@ -178,7 +178,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setBrightness(value: CharacteristicValue) {
 		const brightness = value as number
-		this.platform.log.debug(`Received from HomeKit: ${this.accessory.displayName} brightness to ${brightness}%`)
+		this.platform.log.debug(`light: HomeKit: ${this.accessory.displayName} brightness: ${brightness}%`)
 
 		this.requestBrightness = brightness
 		this.requestBrightnessInstant = true
@@ -222,11 +222,11 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 	}
 
 	private async updateBrightness() {
-		this.platform.log.info(`Sending to controller: ${this.displayName} brightness to ${this.requestBrightness}%`)
+		this.platform.log.info(`light: Sending to controller: ${this.displayName} brightness to ${this.requestBrightness}%`)
 		try {
 			await this.platform.sendArcLevel(this.accessory.context.address, percentageToArcLevel(this.requestBrightness!), this.requestBrightnessInstant)
 		} catch (error) {
-			this.platform.log.warn(`Failed to send to controller: ${this.displayName} brightness to ${this.requestBrightness}%`, error)
+			this.platform.log.warn(`light: Failed to send to controller: ${this.displayName} brightness to ${this.requestBrightness}%`, error)
 		}
 	}
 
@@ -234,20 +234,20 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		const brightness = this.requestBrightness ?? this.knownBrightness
 
 		const color = this.daliColor()
-		this.platform.log.info(`Sending to controller: ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`)
+		this.platform.log.info(`light: Sending to controller: ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`)
 		try {
 			await this.platform.sendColor(this.accessory.context.address, color, percentageToArcLevel(brightness), this.requestBrightnessInstant)
 		} catch (error) {
-			this.platform.log.warn(`Failed to send to controller: ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`, error)
+			this.platform.log.warn(`light: Failed to send to controller: ${this.displayName} color to ${this.requestHue ?? this.knownHue}°, ${this.requestSaturation ?? this.knownSaturation}%, ${brightness}%`, error)
 		}
 	}
 
 	private async updateOff() {
-		this.platform.log.info(`Sending to controller: ${this.displayName} to off`)
+		this.platform.log.info(`light: Sending to controller: ${this.displayName} to off`)
 		try {
 			await this.platform.sendArcLevel(this.accessory.context.address, 0, false)
 		} catch (error) {
-			this.platform.log.warn(`Failed to send to controller: ${this.displayName} to off`, error)
+			this.platform.log.warn(`light: Failed to send to controller: ${this.displayName} to off`, error)
 		}
 	}
 
@@ -275,12 +275,12 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 		const on = arcLevel > 0
 
 		if (brightness !== this.knownBrightness) {
-			this.platform.log.info(`Received from controller: ${this.accessory.displayName} brightness to ${brightness}`)
+			this.platform.log.debug(`light: controller: ${this.accessory.displayName} brightness: ${brightness}`)
 			this.knownBrightness = brightness
 			this.service.updateCharacteristic(this.platform.Characteristic.Brightness, brightness)
 		}
 		if (on !== this.knownOn) {
-			this.platform.log.info(`Received from controller: ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
+			this.platform.log.debug(`light: controller: ${this.accessory.displayName}: ${on ? 'on' : 'off'}`)
 			this.knownOn = on
 			this.service.updateCharacteristic(this.platform.Characteristic.On, on)
 		}
@@ -292,7 +292,7 @@ export class ZencontrolLightPlatformAccessory implements ZencontrolTPIPlatformAc
 			const saturation = Math.round(s * 100)
 
 			if (h !== this.knownHue || saturation !== this.knownSaturation) {
-				this.platform.log.info(`Received from controller: ${this.accessory.displayName} colour to ${h}°, ${saturation}%`)
+				this.platform.log.debug(`light: controller: ${this.accessory.displayName} colour: ${h}°, ${saturation}%`)
 				this.knownHue = h
 				this.knownSaturation = saturation
 

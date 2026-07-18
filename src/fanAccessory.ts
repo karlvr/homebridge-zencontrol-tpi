@@ -35,7 +35,7 @@ export class ZencontrolFanPlatformAccessory implements ZencontrolTPIPlatformAcce
 	 */
 	async setOn(value: CharacteristicValue) {
 		const on = value as boolean
-		this.platform.log.debug(`Set fan ${this.accessory.displayName} (${this.accessory.context.address}) to ${on ? 'on' : 'off'}`)
+		this.platform.log.debug(`fan: HomeKit: ${this.accessory.displayName} (${this.accessory.context.address}): ${on ? 'on' : 'off'}`)
 
 		this.requestOn = !!on
 
@@ -63,7 +63,7 @@ export class ZencontrolFanPlatformAccessory implements ZencontrolTPIPlatformAcce
 		const on = arcLevel > 0
 
 		if (on !== this.knownOn) {
-			this.platform.log.debug(`Controller updated fan ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
+			this.platform.log.debug(`fan: controller: ${this.accessory.displayName}: ${on ? 'on' : 'off'}`)
 			this.knownOn = on
 			this.service.updateCharacteristic(this.platform.Characteristic.On, on)
 		}

@@ -37,7 +37,7 @@ export class ZencontrolSensorAccessory implements ZencontrolTPIPlatformAccessory
 
 	protected receiveValue(value: number | null) {
 		this.knownValue = value
-		this.platform.log(`Received ${this.sensorLabel} for ${this.displayName}: ${value}`)
+		this.platform.log.debug(`sensor: controller: ${this.displayName} ${this.sensorLabel}: ${value}`)
 		this.service.updateCharacteristic(this.valueCharacteristic, value)
 	}
 

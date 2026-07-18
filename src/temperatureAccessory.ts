@@ -23,7 +23,7 @@ export class ZencontrolTemperaturePlatformAccessory extends ZencontrolSensorAcce
 				value /= 10
 			}
 			if (!this.hasWarnedScaling) {
-				this.platform.log.warn(`Received out-of-range temperature for ${this.displayName}: ${original}, scaled to ${value}`)
+				this.platform.log.warn(`temperature: controller: out-of-range value for ${this.displayName}: ${original}, scaled to ${value}`)
 				this.hasWarnedScaling = true
 			}
 		}

@@ -35,7 +35,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 	 */
 	async setOn(value: CharacteristicValue) {
 		const on = value as boolean
-		this.platform.log.debug(`Set relay ${this.accessory.displayName} (${this.accessory.context.address}) to ${on ? 'on' : 'off'}`)
+		this.platform.log.debug(`relay: HomeKit: ${this.accessory.displayName} (${this.accessory.context.address}): ${on ? 'on' : 'off'}`)
 
 		this.requestOn = !!on
 
@@ -46,7 +46,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 				await this.platform.sendOff(this.accessory.context.address)
 			}
 		} catch (error) {
-			this.platform.log.warn(`Failed to update on/off state for ${this.accessory.displayName}`, error)
+			this.platform.log.warn(`relay: Failed to update on/off state for ${this.accessory.displayName}`, error)
 		}
 	}
 
@@ -63,7 +63,7 @@ export class ZencontrolRelayPlatformAccessory implements ZencontrolTPIPlatformAc
 		const on = arcLevel > 0
 
 		if (on !== this.knownOn) {
-			this.platform.log.debug(`Controller updated relay ${this.accessory.displayName} on/off to ${on ? 'on' : 'off'}`)
+			this.platform.log.debug(`relay: controller: ${this.accessory.displayName}: ${on ? 'on' : 'off'}`)
 			this.knownOn = on
 			this.service.updateCharacteristic(this.platform.Characteristic.On, on)
 		}

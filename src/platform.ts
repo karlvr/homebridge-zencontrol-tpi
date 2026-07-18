@@ -272,7 +272,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				accessoryTypeName: 'relay', AccessoryClass: ZencontrolRelayPlatformAccessory, options: {},
 			})
 		} else {
-			this.log.debug(`Ignoring relay as it is not listed in the config: ${label}`)
+			this.log.debug(`discovery: Ignoring relay as it is not listed in the config: ${label}`)
 			return
 		}
 
@@ -347,7 +347,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 					return
 				}
 
-				this.log.debug(`Ignoring unrecognised system variable: ${label}`)
+				this.log.debug(`discovery: Ignoring unrecognised system variable: ${label}`)
 			}))
 		}
 	}
@@ -365,7 +365,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			}
 
 			if (foundAcc) {
-				this.log.info(`Found position system variable for ${foundAcc.displayName}: ${label}`)
+				this.log.debug(`discovery: Found position system variable for ${foundAcc.displayName}: ${label}`)
 				foundAcc.positionSystemVariableAddress = address
 
 				this.accessoriesByAddress.set(address, foundAcc)
@@ -374,7 +374,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 					this.log.warn(`Failed to update accessory "${acc.displayName}": ${reason}`)
 				})
 			} else {
-				this.log.debug(`Ignoring position system variable as no matching accessory found: ${label}`)
+				this.log.debug(`discovery: Ignoring position system variable as no matching accessory found: ${label}`)
 			}
 		}
 	}
@@ -385,7 +385,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		let acc: T
 		if (existingAccessory) {
-			this.log.debug(`Restoring existing ${config.accessoryTypeName} accessory from cache:`, existingAccessory.displayName)
+			this.log.debug(`discovery: Restoring existing ${config.accessoryTypeName} accessory from cache:`, existingAccessory.displayName)
 
 			this.updateAccessory(existingAccessory, config)
 

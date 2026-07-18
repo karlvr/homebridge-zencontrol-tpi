@@ -62,7 +62,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 
 	async setTargetPosition(value: CharacteristicValue) {
 		const targetPosition = (value as number) >= 50 ? WINDOW_OPEN : WINDOW_CLOSED
-		this.platform.log.debug(`Set window ${this.accessory.displayName} (${this.accessory.context.address}) to ${targetPosition === WINDOW_OPEN ? 'open' : 'closed'}`)
+		this.platform.log.debug(`window: HomeKit: ${this.accessory.displayName} (${this.accessory.context.address}): ${targetPosition === WINDOW_OPEN ? 'open' : 'closed'}`)
 
 		this.targetPosition = targetPosition
 		if (this.positionStateTimeout) {
@@ -72,13 +72,13 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 
 		try {
 			if (this.targetPosition === WINDOW_CLOSED) {
-				this.platform.log.debug(`Updating window position state to decreasing: ${this.accessory.displayName}`)
+				this.platform.log.debug(`window: Updating window position state to decreasing: ${this.accessory.displayName}`)
 				this.positionState = this.platform.Characteristic.PositionState.DECREASING
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 
 				await this.platform.setSystemVariable(this.options.controlSystemVariableAddress, WINDOW_CLOSING)
 			} else {
-				this.platform.log.debug(`Updating window position state to increasing: ${this.accessory.displayName}`)
+				this.platform.log.debug(`window: Updating window position state to increasing: ${this.accessory.displayName}`)
 				this.positionState = this.platform.Characteristic.PositionState.INCREASING
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
 
@@ -86,7 +86,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 			}
 
 			this.positionStateTimeout = setTimeout(() => {
-				this.platform.log.debug(`Updating window position state to stopped: ${this.accessory.displayName}`)
+				this.platform.log.debug(`window: Updating window position state to stopped: ${this.accessory.displayName}`)
 				this.positionStateTimeout = undefined
 				this.positionState = this.platform.Characteristic.PositionState.STOPPED
 				this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.positionState)
@@ -108,7 +108,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 			return
 		}
 
-		this.platform.log.debug(`Controller updated window ${this.accessory.displayName} to ${control === 0 ? 'stopped' : control === 1 ? 'closing' : 'opening'}`)
+		this.platform.log.debug(`window: controller: ${this.accessory.displayName}: ${control === 0 ? 'stopped' : control === 1 ? 'closing' : 'opening'}`)
 
 		const position = control === 0 ? -1 : control === 1 ? WINDOW_CLOSED : WINDOW_OPEN
 		if (position !== -1 && position !== this.targetPosition) {
@@ -123,7 +123,7 @@ export class ZencontrolWindowPlatformAccessory implements ZencontrolTPIPlatformA
 			return
 		}
 
-		this.platform.log.debug(`Controller updated window ${this.accessory.displayName} to position ${position}`)
+		this.platform.log.debug(`window: controller: ${this.accessory.displayName} position: ${position}`)
 
 		if (position !== this.currentPosition) {
 			this.currentPosition = position
