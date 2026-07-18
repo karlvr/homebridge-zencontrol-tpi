@@ -33,7 +33,6 @@
 		"typescript-eslint": "^8.58.0"
 	},
 	"dependencies": {
-		"homebridge-lib": "^7.3.2",
 		"zencontrol-tpi-node": "^1.2.2"
 	},
 	"publishConfig": {
