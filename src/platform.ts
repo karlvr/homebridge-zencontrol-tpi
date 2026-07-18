@@ -93,7 +93,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			log.debug('Executed didFinishLaunching callback')
 			// run the method to discover / register your devices as accessories
 			this.discoverDevices().then(() => {
-				this.activateLiveEvents()
+				return this.activateLiveEvents()
+			}).catch((error) => {
+				this.log.error('Failed to start platform:', error)
 			})
 		})
 	}
