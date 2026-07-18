@@ -32,5 +32,5 @@ export interface ZencontrolSystemVariableAccessory {
 
 export function isZencontrolSystemVariableAccessory(acc: unknown): acc is ZencontrolSystemVariableAccessory {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return (typeof (acc as any).receiveSystemVariableChange === 'function')
+	return (typeof (acc as any)?.receiveSystemVariableChange === 'function')
 }
