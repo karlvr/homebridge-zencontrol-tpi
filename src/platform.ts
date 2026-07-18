@@ -184,7 +184,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 					})
 					const groupStatus = await this.zc.queryGroupByNumber(group)
 					if (groupStatus) {
-						acc.receiveArcLevel(groupStatus.level)
+						acc.receiveArcLevel(groupStatus.level).catch((reason) => {
+							this.log.warn(`Failed to update accessory "${label}" brightness: ${reason}`)
+						})
 					}
 				}))
 			}
@@ -233,7 +235,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			})
 			const level = await this.zc.daliQueryLevel(ecg)
 			if (level !== null) {
-				acc.receiveArcLevel(level)
+				acc.receiveArcLevel(level).catch((reason) => {
+					this.log.warn(`Failed to update accessory "${label}" brightness: ${reason}`)
+				})
 			}
 		} else if (types.find(isRelayControlGear)) {
 			await this.discoverRelayECG(controller, ecg)
@@ -246,7 +250,7 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 			return
 		}
 
-		let acc: { receiveArcLevel(level: number): void } | undefined
+		let acc: { receiveArcLevel(level: number): Promise<void> } | undefined
 		if ((this.config.blinds ?? []).includes(label)) {
 			acc = this.addAccessory({
 				address: addressToString(ecg), label, model: 'Relay',
@@ -272,7 +276,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 
 		const level = await this.zc.daliQueryLevel(ecg)
 		if (level !== null) {
-			acc.receiveArcLevel(level)
+			acc.receiveArcLevel(level).catch((reason) => {
+				this.log.warn(`Failed to update accessory "${label}" level: ${reason}`)
+			})
 		}
 	}
 
@@ -306,7 +312,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 							controlSystemVariableAddress: address,
 						},
 					})
-					acc.receiveSystemVariableChange(address, value)
+					acc.receiveSystemVariableChange(address, value).catch((reason) => {
+						this.log.warn(`Failed to update accessory "${label}": ${reason}`)
+					})
 					return
 				}
 
@@ -331,7 +339,9 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 						AccessoryClass: sensorMatch.AccessoryClass,
 						options: {},
 					})
-					acc.receiveSystemVariableChange(address, value)
+					acc.receiveSystemVariableChange(address, value).catch((reason) => {
+						this.log.warn(`Failed to update accessory "${label}": ${reason}`)
+					})
 					return
 				}
 
@@ -357,7 +367,10 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 				foundAcc.positionSystemVariableAddress = address
 
 				this.accessoriesByAddress.set(address, foundAcc)
-				foundAcc.receiveSystemVariableChange(address, value)
+				const acc = foundAcc
+				acc.receiveSystemVariableChange(address, value).catch((reason) => {
+					this.log.warn(`Failed to update accessory "${acc.displayName}": ${reason}`)
+				})
 			} else {
 				this.log.debug(`Ignoring position system variable as no matching accessory found: ${label}`)
 			}
