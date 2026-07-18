@@ -6,10 +6,9 @@
 
     /* Modules */
     "module": "NodeNext",
-    "rootDir": "./src",
 
-    /* Emit */
-    "outDir": "./dist",
+    /* Emit — this config only type-checks; building emits via tsconfig.build.json */
+    "noEmit": true,
 
     /* Interop Constraints */
     "esModuleInterop": true,
@@ -26,5 +25,6 @@
   },
   "include": [
     "src",
+    "test",
   ],
 }
