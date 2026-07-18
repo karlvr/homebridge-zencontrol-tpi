@@ -1,5 +1,24 @@
 # homebridge-zencontrol-tpi
 
+## 1.2.0
+
+### Minor Changes
+
+- 6a9b41a: Support Homebridge 2.0 stable releases, and continue to support Homebridge 1.8+
+
+### Patch Changes
+
+- 62dab3f: fix: reject truncated device and system variable addresses instead of producing NaN addresses
+- dc0f8a9: fix: reset discovery state at the start of each run and discard pending registrations when discovery fails
+- 2b01af2: fix: ECD string addresses now use the raw device index, so they round-trip through parsing correctly
+- 2908177: Standardise debug logging
+- b7d2479: fix: persist accessory display name changes to the accessory cache
+- 0e863ca: chore: remove unused homebridge-lib dependency
+- 360624c: fix: report saturation to HomeKit as a percentage when receiving a colour change from the controller
+- 2b48a07: fix: sendColor now honours its instant parameter, stopping any in-progress fade before sending a colour change
+- 34a1496: fix: log startup failures instead of raising an unhandled rejection that can crash Homebridge
+- cbb6fc6: Update zencontrol-tpi-node to 1.3.0
+
 ## 1.1.1
 
 ### Patch Changes
