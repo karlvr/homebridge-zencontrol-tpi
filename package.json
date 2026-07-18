@@ -39,6 +39,10 @@
 	"dependencies": {
 		"zencontrol-tpi-node": "^1.3.0"
 	},
+	"files": [
+		"config.schema.json",
+		"dist"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
