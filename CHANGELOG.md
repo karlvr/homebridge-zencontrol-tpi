@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.2.2
+
+### Patch Changes
+
+- 11008d2: Tidy light logging
+
 ## 1.2.1
 
 ### Patch Changes
