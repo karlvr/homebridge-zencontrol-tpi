@@ -14,6 +14,7 @@ import { ZencontrolWindowPlatformAccessory } from './windowAccessory.js'
 import { ZencontrolLuxPlatformAccessory } from './luxAccessory.js'
 import { ZencontrolCO2PlatformAccessory } from './co2Accessory.js'
 import { ZencontrolSensorAccessory } from './sensorAccessory.js'
+import { ZencontrolContactPlatformAccessory } from './contactAccessory.js'
 
 interface ZencontrolTPIPlatformAccessoryConfiguration<T extends ZencontrolTPIPlatformAccessory, O> {
 	address: string
@@ -313,6 +314,24 @@ export class ZencontrolTPIPlatform implements DynamicPlatformPlugin {
 						options: {
 							controlSystemVariableAddress: address,
 						},
+					})
+					acc.receiveSystemVariableChange(address, value).catch((reason) => {
+						this.log.warn(`Failed to update accessory "${label}": ${reason}`)
+					})
+					return
+				}
+
+				if ((this.config.contactSwitches ?? []).includes(label)) {
+					const value = await this.zc.querySystemVariable(controller, variable)
+
+					const acc = this.addAccessory({
+						address,
+						label,
+						model: 'System Variable',
+						serial: `SV ${controller.id}.${variable}`,
+						accessoryTypeName: 'contact',
+						AccessoryClass: ZencontrolContactPlatformAccessory,
+						options: {},
 					})
 					acc.receiveSystemVariableChange(address, value).catch((reason) => {
 						this.log.warn(`Failed to update accessory "${label}": ${reason}`)

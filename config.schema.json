@@ -25,6 +25,14 @@
 					"type": "string"
 				}
 			},
+			"contactSwitches": {
+				"type": "array",
+				"title": "Contact Switches",
+				"description": "The names of system variables on your controllers that should be represented as contact switches.",
+				"items": {
+					"type": "string"
+				}
+			},
 			"fans": {
 				"type": "array",
 				"title": "Fans",

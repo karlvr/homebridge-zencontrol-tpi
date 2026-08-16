@@ -37,6 +37,18 @@ The plugin assumes that the control system variable is set to:
 There should be a position system variable with the same name as the control variable with the word "Position" after it. This has
 the same semantics as for blinds.
 
+### Contact switches
+
+If you have contact switches reported by a system variable, you can list the variable name in the Contact Switches list in the
+plugin configuration. The switch is represented as a contact sensor with the same name as the system variable.
+
+The plugin assumes that the system variable is set to:
+* 0 for closed
+* any other value for open
+
+If the system variable has no value, the contact sensor retains the last state it observed and reports a fault. Until a value has
+been observed at all it reports closed.
+
 ### Relays
 
 Any relay that has its name (Location name) listed in the Switches list in the plugin configuration will be represented as a switch. Only named relays
