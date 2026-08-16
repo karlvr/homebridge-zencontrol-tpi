@@ -1,5 +1,11 @@
 # homebridge-zencontrol-tpi
 
+## 1.3.0
+
+### Minor Changes
+
+- 921f420: Add support for contact switches backed by system variables, listed in the new Contact Switches plugin configuration
+
 ## 1.2.2
 
 ### Patch Changes
